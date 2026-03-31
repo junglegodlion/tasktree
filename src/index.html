@@ -636,7 +636,7 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   line-height: 1.5;
 }
 .timer-expired-actions {
-  display: flex; gap: 12px; justify-content: center;
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
 }
 .btn-confirm {
   padding: 12px 32px;
@@ -661,6 +661,30 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   border: 1px solid var(--border2);
 }
 .btn-close-modal:hover { background: var(--bg4); color: var(--text); }
+.btn-delay {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-delay:hover {
+  background: rgba(245,158,11,0.15);
+  color: var(--amber);
+  border-color: rgba(245,158,11,0.3);
+}
+.overtime-warning {
+  font-size: 12px;
+  color: var(--amber);
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
 
 /* ── Animations ─────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -804,6 +828,10 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
               <span class="stat-value" id="stat-active">0</span>
             </div>
             <div class="progress-stat">
+              <span class="stat-label">超时</span>
+              <span class="stat-value" id="stat-overtime" style="color: var(--amber)">0</span>
+            </div>
+            <div class="progress-stat">
               <span class="stat-label">总任务</span>
               <span class="stat-value" id="stat-total">0</span>
             </div>
@@ -914,10 +942,23 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   <div class="timer-expired-card">
     <div class="timer-expired-icon">
       <svg viewBox="0 0 24 24" fill="none">
-        <path d="M12 2v1M12 21v1M4.22 4.22l.71.71M18.36 18.36l.71.71M2 12h1M21 12h1M4.22 19.78l.71-.71M18.36 5.64l.71-.71" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 2v1M12 21v1M4.22 4.22l.71.71M18.36 18.36l.71-.71M2 12h1M21 12h1M4.22 19.78l.71-.71M18.36 5.64l.71-.71" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"/>
         <circle cx="12" cy="12" r="6" stroke="var(--red)" stroke-width="2.5"/>
       </svg>
     </div>
+    <h3>⏰ 时间到！</h3>
+    <p class="timer-task-name" id="timer-expired-task-name">任务已完成计时时长</p>
+    <div class="timer-expired-actions">
+      <button class="btn-close-modal" onclick="closeTimerExpiredModal()">稍后处理</button>
+      <button class="btn-delay" onclick="delayTimer5Min()">+5分钟</button>
+      <button class="btn-confirm" onclick="confirmTimerExpired()">我知道了</button>
+    </div>
+    <div class="overtime-warning">
+      <span>⚠️</span>
+      <span>选择延迟5分钟将会标记此任务为超时</span>
+    </div>
+  </div>
+</div>
     <h3>⏰ 时间到！</h3>
     <p class="timer-task-name" id="timer-expired-task-name">任务已完成计时时长</p>
     <div class="timer-expired-actions">
@@ -1163,7 +1204,7 @@ async function addTask(text, parentId = null) {
   const task = {
     id: uid(), userId: DB.currentUser, date, parentId,
     text, done: false, collapsed: false,
-    timerSeconds: 5 * 60, timerUsed: 0, note: '',
+    timerSeconds: 5 * 60, timerUsed: 0, note: '', isOvertime: false,
     createdAt: new Date().toISOString()
   };
   DB.tasks.push(task);
@@ -1215,6 +1256,7 @@ async function toggleDone(taskId) {
   const task = DB.tasks.find(t => t.id === taskId);
   if (!task) return;
   task.done = !task.done;
+  
   // If marking done, also stop timer if running on this task or its children
   if (task.done && timerState.taskId) {
     const isThisTask = timerState.taskId === taskId;
@@ -1228,14 +1270,25 @@ async function toggleDone(taskId) {
       stopTimer();
     }
   }
+  
+  // If marking done, clear overtime flag
+  if (task.done && task.isOvertime) {
+    task.isOvertime = false;
+  }
+  
   // If marking done, also mark all children done
   const markChildren = (pid, done) => {
-    childrenOf(pid).forEach(c => { c.done = done; markChildren(c.id, done); });
+    childrenOf(pid).forEach(c => { 
+      c.done = done;
+      if (done && c.isOvertime) c.isOvertime = false;
+      markChildren(c.id, done); 
+    });
   };
   markChildren(taskId, task.done);
   await propagateParentStatus(task.parentId);
   await saveDB();
   renderTaskList();
+  updateProgress();
 }
 
 async function propagateParentStatus(parentId) {
@@ -1347,7 +1400,20 @@ function renderNode(task) {
   // Label
   const label = document.createElement('div');
   label.className = 'task-label' + (task.done ? ' done' : '');
-  label.textContent = task.text;
+  
+  const labelContent = document.createElement('span');
+  labelContent.textContent = task.text;
+  label.appendChild(labelContent);
+  
+  // Overtime tag
+  if (!task.done && task.isOvertime) {
+    const overtimeTag = document.createElement('span');
+    overtimeTag.className = 'overtime-tag';
+    overtimeTag.textContent = '⚠️超时';
+    overtimeTag.style.cssText = 'font-size: 10px; padding: 1px 6px; background: rgba(245,158,11,0.15); color: var(--amber); border-radius: 4px; margin-left: 8px;';
+    label.appendChild(overtimeTag);
+  }
+  
   label.title = 'Double-click to edit';
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
@@ -1700,12 +1766,14 @@ function updateProgress() {
   const todayTasks = tasksForDate(todayKey());
   const completedTasks = todayTasks.filter(t => t.done).length;
   const totalTasks = todayTasks.filter(t => !t.done).length;
+  const overtimeTasks = todayTasks.filter(t => !t.done && t.isOvertime).length;
   const total = totalTasks + completedTasks;
   const percent = total > 0 ? Math.round((completedTasks / total) * 100) : 0;
   
   document.getElementById('progress-percent').textContent = percent + '%';
   document.getElementById('stat-completed').textContent = completedTasks;
   document.getElementById('stat-active').textContent = totalTasks;
+  document.getElementById('stat-overtime').textContent = overtimeTasks;
   document.getElementById('stat-total').textContent = total;
   
   const ringFill = document.getElementById('progress-ring-fill');
@@ -1767,6 +1835,42 @@ function confirmTimerExpired() {
   const flash = document.getElementById('alert-flash');
   flash.classList.remove('active');
   stopTitleFlash();
+}
+
+async function delayTimer5Min() {
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (!task) return;
+  
+  // Mark task as overtime
+  if (!task.isOvertime) {
+    task.isOvertime = true;
+  }
+  
+  // Add 5 minutes (300 seconds) to the task
+  const addSeconds = 5 * 60;
+  task.timerSeconds += addSeconds;
+  timerState.remaining += addSeconds;
+  timerState.timerSeconds = task.timerSeconds;
+  
+  // Resume the timer
+  timerState.running = true;
+  timerState.startTime = Date.now();
+  timerState.pausedAt = task.timerUsed;
+  timerState.interval = setInterval(timerTick, 100);
+  
+  await saveDB();
+  updateTimerPanel();
+  renderTaskList();
+  updateProgress();
+  
+  // Close modal
+  closeTimerExpiredModal();
+  const flash = document.getElementById('alert-flash');
+  flash.classList.remove('active');
+  stopTitleFlash();
+  
+  // Notify user
+  api.notify({ title: '⏱ 延时5分钟', body: `任务「${task.text}」已延长5分钟，已标记为超时` });
 }
 
 function stopTitleFlash() {
