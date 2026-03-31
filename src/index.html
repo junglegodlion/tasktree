@@ -416,7 +416,32 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
 .action-btn.run { color: var(--emerald); }
 .action-btn.run:hover { background: rgba(16,185,129,0.15); color: var(--emerald2); }
 .action-btn.running { color: var(--amber); animation: pulse 1.5s infinite; }
-.action-btn.del:hover { background: rgba(239,68,68,0.1); color: var(--red); }
+.action-btn.note:hover { background: rgba(245,158,11,0.15); color: var(--amber); }
+
+/* Note Panel */
+.task-note-panel {
+  display: none;
+  padding: 10px 12px 12px 40px;
+  background: var(--bg2);
+  border-radius: 8px;
+  margin: 4px 0 8px;
+  border: 1px solid var(--border);
+}
+.task-note-panel.visible { display: block; }
+.task-note-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+}
+.task-note-textarea:focus { border-color: var(--indigo); outline: none; box-shadow: var(--ring); }
+.task-note-hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
 
 /* Children indent */
 .task-children { padding-left: 24px; }
@@ -790,6 +815,7 @@ let timerState = {
 let isAuthMode = 'login';
 let inlineAddParentId = null;
 let currentTheme = 'light';
+let expandedNoteId = null;
 
 // ══════════════════════════════════════════════════════════════
 //  UTILS
@@ -998,7 +1024,7 @@ async function addTask(text, parentId = null) {
   const task = {
     id: uid(), userId: DB.currentUser, date, parentId,
     text, done: false, collapsed: false,
-    timerSeconds: 5 * 60, timerUsed: 0,
+    timerSeconds: 5 * 60, timerUsed: 0, note: '',
     createdAt: new Date().toISOString()
   };
   DB.tasks.push(task);
@@ -1040,6 +1066,7 @@ async function deleteTask(taskId) {
   collectChildren(taskId);
   DB.tasks = DB.tasks.filter(t => !toDelete.includes(t.id));
   if (timerState.taskId && toDelete.includes(timerState.taskId)) stopTimer();
+  if (expandedNoteId && toDelete.includes(expandedNoteId)) expandedNoteId = null;
   await saveDB();
   updateBadges();
   renderTaskList();
@@ -1049,6 +1076,19 @@ async function toggleDone(taskId) {
   const task = DB.tasks.find(t => t.id === taskId);
   if (!task) return;
   task.done = !task.done;
+  // If marking done, also stop timer if running on this task or its children
+  if (task.done && timerState.taskId) {
+    const isThisTask = timerState.taskId === taskId;
+    const collectChildrenIds = (pid) => {
+      const ids = [];
+      childrenOf(pid).forEach(c => { ids.push(c.id); ids.push(...collectChildrenIds(c.id)); });
+      return ids;
+    };
+    const childIds = collectChildrenIds(taskId);
+    if (isThisTask || childIds.includes(timerState.taskId)) {
+      stopTimer();
+    }
+  }
   // If marking done, also mark all children done
   const markChildren = (pid, done) => {
     childrenOf(pid).forEach(c => { c.done = done; markChildren(c.id, done); });
@@ -1080,6 +1120,21 @@ async function toggleCollapse(taskId) {
   if (task) { task.collapsed = !task.collapsed; await saveDB(); renderTaskList(); }
 }
 
+function toggleNotePanel(taskId) {
+  if (expandedNoteId === taskId) {
+    expandedNoteId = null;
+  } else {
+    expandedNoteId = taskId;
+  }
+  renderTaskList();
+  if (expandedNoteId) {
+    setTimeout(() => {
+      const ta = document.querySelector(`#note-panel-${taskId} .task-note-textarea`);
+      if (ta) ta.focus();
+    }, 0);
+  }
+}
+
 // ── Check state for task (for partial) ──────────────────────
 function taskCheckState(taskId) {
   const children = childrenOf(taskId);
@@ -1099,6 +1154,9 @@ function renderTaskList() {
   const date = dateKey(currentDateOffset);
   if (inlineAddParentId && !tasksForDate(date).some(t => t.id === inlineAddParentId)) {
     inlineAddParentId = null;
+  }
+  if (expandedNoteId && !DB.tasks.find(t => t.id === expandedNoteId)) {
+    expandedNoteId = null;
   }
   const roots = rootTasksForDate(date);
   const container = document.getElementById('task-list');
@@ -1186,6 +1244,14 @@ function renderNode(task) {
   addBtn.onclick = () => beginAddChild(task.id);
   actions.appendChild(addBtn);
 
+  // Note btn
+  const noteBtn = document.createElement('button');
+  noteBtn.className = 'action-btn note';
+  noteBtn.title = task.note ? '查看/编辑备注' : '添加备注';
+  noteBtn.textContent = task.note ? '📝' : '📋';
+  noteBtn.onclick = () => toggleNotePanel(task.id);
+  actions.appendChild(noteBtn);
+
   // Delete btn
   const delBtn = document.createElement('button');
   delBtn.className = 'action-btn del';
@@ -1196,6 +1262,32 @@ function renderNode(task) {
 
   row.appendChild(actions);
   node.appendChild(row);
+
+  // Note panel
+  const notePanel = document.createElement('div');
+  notePanel.className = 'task-note-panel' + (expandedNoteId === task.id ? ' visible' : '');
+  notePanel.id = 'note-panel-' + task.id;
+  const noteTextarea = document.createElement('textarea');
+  noteTextarea.className = 'task-note-textarea';
+  noteTextarea.placeholder = '添加备注...';
+  noteTextarea.value = task.note || '';
+  noteTextarea.oninput = async (e) => {
+    task.note = e.target.value;
+    await saveDB();
+  };
+  noteTextarea.onkeydown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      expandedNoteId = null;
+      renderTaskList();
+    }
+  };
+  notePanel.appendChild(noteTextarea);
+  const noteHint = document.createElement('div');
+  noteHint.className = 'task-note-hint';
+  noteHint.textContent = '按 Esc 关闭备注面板';
+  notePanel.appendChild(noteHint);
+  node.appendChild(notePanel);
 
   // Children
   if (hasChildren && !task.collapsed) {
