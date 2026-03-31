@@ -861,7 +861,9 @@ let timerState = {
   remaining: 0,
   timerSeconds: 0,
   running: false,
-  interval: null
+  interval: null,
+  pausedAt: null,
+  startTime: null
 };
 let isAuthMode = 'login';
 let inlineAddParentId = null;
@@ -1272,11 +1274,22 @@ function renderNode(task) {
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
 
-  // Timer display
-  if (timerState.taskId === task.id) {
+  // Timer display - show this task's timer if active or has timer used
+  const taskRemaining = task.timerSeconds - task.timerUsed;
+  const isThisTask = timerState.taskId === task.id;
+  const showTimerDisplay = task.timerUsed > 0 || isThisTask;
+  
+  if (showTimerDisplay && taskRemaining > 0) {
+    const displayRemaining = isThisTask ? timerState.remaining : taskRemaining;
     const td = document.createElement('div');
-    td.className = 'task-timer-display' + (isRunning ? ' running' : '') + (timerState.remaining < 60 && timerState.remaining > 0 ? ' urgent' : '');
-    td.textContent = fmtTime(timerState.remaining);
+    td.className = 'task-timer-display' + (isThisTask && isRunning ? ' running' : '') + (displayRemaining < 60 && displayRemaining > 0 ? ' urgent' : '');
+    td.textContent = fmtTime(displayRemaining);
+    td.style.cursor = 'pointer';
+    td.title = '点击恢复计时';
+    td.onclick = (e) => {
+      e.stopPropagation();
+      startTimer(task.id);
+    };
     row.appendChild(td);
   }
 
@@ -1442,22 +1455,34 @@ function startEditLabel(labelEl, taskId) {
 //  TIMER
 // ══════════════════════════════════════════════════════════════
 function startTimer(taskId) {
-  // Stop previous
   if (timerState.interval) clearInterval(timerState.interval);
+
+  // Save previous task progress when switching
+  if (timerState.taskId && timerState.taskId !== taskId) {
+    const prevTask = DB.tasks.find(t => t.id === timerState.taskId);
+    if (prevTask) {
+      const elapsed = timerState.running 
+        ? Math.floor((Date.now() - timerState.startTime) / 1000)
+        : timerState.pausedAt || 0;
+      prevTask.timerUsed = Math.min(prevTask.timerSeconds, elapsed);
+      saveDB();
+    }
+  }
 
   const task = DB.tasks.find(t => t.id === taskId);
   if (!task) return;
 
-  // Restore remaining or full duration
   const remaining = task.timerSeconds - task.timerUsed;
-  timerState = { 
-    taskId, 
-    remaining: Math.max(remaining, 0), 
-    timerSeconds: task.timerSeconds, 
-    running: true, 
-    interval: null 
+  timerState = {
+    taskId,
+    remaining: Math.max(remaining, 0),
+    timerSeconds: task.timerSeconds,
+    running: true,
+    interval: null,
+    pausedAt: task.timerUsed,
+    startTime: Date.now()
   };
-  timerState.interval = setInterval(timerTick, 1000);
+  timerState.interval = setInterval(timerTick, 100);
 
   updateTimerPanel();
   renderTaskList();
@@ -1465,7 +1490,9 @@ function startTimer(taskId) {
 
 function timerTick() {
   if (!timerState.running) return;
-  timerState.remaining--;
+  
+  const elapsed = Math.floor((Date.now() - timerState.startTime) / 1000);
+  timerState.remaining = Math.max(timerState.timerSeconds - timerState.pausedAt - elapsed, 0);
 
   // Persist every 5s
   const task = DB.tasks.find(t => t.id === timerState.taskId);
@@ -1490,19 +1517,33 @@ function timerTick() {
 
 function togglePause() {
   if (!timerState.taskId) return;
-  timerState.running = !timerState.running;
   if (timerState.running) {
-    timerState.interval = setInterval(timerTick, 1000);
-    document.getElementById('timer-pause-btn').textContent = '暂停';
-  } else {
+    timerState.running = false;
+    timerState.pausedAt = (timerState.pausedAt || 0) + Math.floor((Date.now() - timerState.startTime) / 1000);
     clearInterval(timerState.interval);
     document.getElementById('timer-pause-btn').textContent = '继续';
+    saveDB();
+  } else {
+    timerState.running = true;
+    timerState.startTime = Date.now();
+    timerState.interval = setInterval(timerTick, 100);
+    document.getElementById('timer-pause-btn').textContent = '暂停';
   }
 }
 
 function stopTimer() {
+  if (timerState.taskId) {
+    const task = DB.tasks.find(t => t.id === timerState.taskId);
+    if (task) {
+      const elapsed = timerState.running 
+        ? Math.floor((Date.now() - timerState.startTime) / 1000)
+        : timerState.pausedAt || 0;
+      task.timerUsed = Math.min(task.timerSeconds, elapsed);
+      saveDB();
+    }
+  }
   clearInterval(timerState.interval);
-  timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null };
+  timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
   document.getElementById('timer-panel').classList.remove('visible');
   stopTitleFlash();
   renderTaskList();
@@ -1516,37 +1557,54 @@ function adjustTimer(deltaMins) {
     task.timerSeconds += newSeconds;
     if (task.timerSeconds < 60) task.timerSeconds = 60;
     if (task.timerSeconds - task.timerUsed < 0) task.timerUsed = 0;
-    task.timerUsed = task.timerSeconds - timerState.remaining;
+    if (timerState.running) {
+      timerState.startTime = Date.now() - ((task.timerSeconds - timerState.remaining) * 1000);
+    }
     saveDB();
   }
   updateTimerPanel();
 }
 
 function showTimeInput() {
+  if (!timerState.taskId) return;
   const input = document.getElementById('timer-input');
   const field = document.getElementById('timer-input-field');
+  const mins = Math.ceil(Math.max(timerState.remaining / 60, 1));
+  field.value = mins;
+  field.min = 1;
+  field.max = 180;
   input.classList.add('visible');
-  field.value = Math.ceil(timerState.remaining / 60);
   field.focus();
   field.select();
 }
 
 function hideTimeInput() {
-  document.getElementById('timer-input').classList.remove('visible');
+  const input = document.getElementById('timer-input');
+  const field = document.getElementById('timer-input-field');
+  field.value = '';
+  input.classList.remove('visible');
 }
 
 function confirmTimerTime() {
   const field = document.getElementById('timer-input-field');
   const mins = parseInt(field.value);
-  if (mins && mins >= 1 && mins <= 180) {
+  if (mins >= 1 && mins <= 180 && !isNaN(mins)) {
     const task = DB.tasks.find(t => t.id === timerState.taskId);
     if (task) {
       task.timerSeconds = mins * 60;
       task.timerUsed = 0;
       timerState.remaining = task.timerSeconds;
+      timerState.timerSeconds = task.timerSeconds;
+      if (timerState.running) {
+        timerState.startTime = Date.now();
+        timerState.pausedAt = 0;
+      } else {
+        timerState.pausedAt = 0;
+      }
       saveDB();
     } else {
       timerState.remaining = mins * 60;
+      timerState.timerSeconds = mins * 60;
     }
     updateTimerPanel();
     hideTimeInput();
