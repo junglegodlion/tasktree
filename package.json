@@ -7,7 +7,9 @@
   "scripts": {
     "start": "electron .",
     "icons": "node scripts/generate-icons.js",
-    "build": "npm run icons && electron-builder"
+    "build": "npm run icons && electron-builder",
+    "build:win": "npm run icons && electron-builder --win",
+    "build:mac": "npm run icons && electron-builder --mac"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -36,6 +38,21 @@
         }
       ],
       "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     },
     "nsis": {
       "oneClick": false,
