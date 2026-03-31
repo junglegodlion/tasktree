@@ -14,11 +14,29 @@ npm start
 
 ### 打包为桌面应用
 
+#### Windows
+
 ```bash
-npm run build
+npm run build:win
 ```
 
 打包完成后，可执行文件位于：`dist/TaskTree-win32-x64/TaskTree.exe`
+
+#### macOS
+
+⚠️ **需要Mac系统环境**
+
+```bash
+npm run build:mac
+```
+
+打包完成后，安装包位于：`dist/TaskTree-1.1.0.dmg`
+
+#### 通用打包命令
+
+```bash
+npm run build
+```
 
 ---
 

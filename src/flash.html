@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer Alert</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #10b981;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Sans SC', sans-serif;
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { background: #10b981; }
+  50% { background: #34d399; }
+}
+.alert-box {
+  text-align: center;
+  color: white;
+}
+.icon { font-size: 80px; margin-bottom: 30px; }
+.message {
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  line-height: 1.6;
+}
+.highlight {
+  display: block;
+  font-size: 48px;
+  margin: 20px 0;
+  font-weight: 800;
+}
+</style>
+</head>
+<body>
+<div class="alert-box">
+  <div class="icon">⏰</div>
+  <div class="message">
+    <span id="task-name" class="highlight"></span>任务<br>
+    计划完成的时间已经到了~
+  </div>
+</div>
+<script>
+const taskName = new URLSearchParams(window.location.search).get('task') || '';
+document.getElementById('task-name').textContent = taskName;
+</script>
+</body>
+</html>
