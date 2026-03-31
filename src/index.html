@@ -455,6 +455,7 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
 }
 .task-timer-display.running { color: var(--emerald2); }
 .task-timer-display.urgent { color: var(--amber); animation: pulse 1s infinite; }
+.task-timer-display.done { color: var(--emerald); }
 
 .action-btn {
   width: 26px; height: 26px; border-radius: 6px;
@@ -1351,21 +1352,23 @@ function renderNode(task) {
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
 
-  // Timer display - show this task's timer if active or has timer used
+  // Timer display - always show remaining time for tasks with timerSeconds set
   const taskRemaining = task.timerSeconds - task.timerUsed;
   const isThisTask = timerState.taskId === task.id;
-  const showTimerDisplay = task.timerUsed > 0 || isThisTask;
+  const showTimerDisplay = task.timerSeconds > 0;
   
-  if (showTimerDisplay && taskRemaining > 0) {
-    const displayRemaining = isThisTask ? timerState.remaining : taskRemaining;
+  if (showTimerDisplay) {
+    const displayRemaining = isThisTask ? timerState.remaining : (task.done ? 0 : taskRemaining);
     const td = document.createElement('div');
-    td.className = 'task-timer-display' + (isThisTask && isRunning ? ' running' : '') + (displayRemaining < 60 && displayRemaining > 0 ? ' urgent' : '');
-    td.textContent = fmtTime(displayRemaining);
+    td.className = 'task-timer-display' + (isThisTask && isRunning ? ' running' : '') + (displayRemaining > 0 && displayRemaining < 60 ? ' urgent' : '') + (task.done ? ' done' : '');
+    td.textContent = task.done ? '完成' : fmtTime(displayRemaining);
     td.style.cursor = 'pointer';
-    td.title = '点击恢复计时';
+    td.title = task.done ? '任务已完成' : (isThisTask ? '点击暂停' : '点击恢复计时');
     td.onclick = (e) => {
       e.stopPropagation();
-      startTimer(task.id);
+      if (task.done) return;
+      if (isThisTask && isRunning) togglePause();
+      else startTimer(task.id);
     };
     row.appendChild(td);
   }
