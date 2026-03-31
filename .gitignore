@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+
+# Electron / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Local data
+tasktree-data/
+data.json

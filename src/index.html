@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskTree</title>
+<link rel="icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Light theme */
+  --bg:        #f6f7fb;
+  --bg2:       #ffffff;
+  --bg3:       #f0f2f8;
+  --bg4:       #e8ecf6;
+  --border:    rgba(15, 23, 42, 0.08);
+  --border2:   rgba(15, 23, 42, 0.14);
+  --text:      #0f172a;
+  --text2:     rgba(15, 23, 42, 0.72);
+  --text3:     rgba(15, 23, 42, 0.45);
+  --indigo:    #6366f1;
+  --indigo2:   #818cf8;
+  --indigo-d:  #4338ca;
+  --emerald:   #10b981;
+  --emerald2:  #34d399;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+  --shadow-sm: 0 10px 30px rgba(2,6,23,0.08);
+  --shadow-md: 0 24px 80px rgba(2,6,23,0.10);
+  --ring:      0 0 0 3px rgba(99,102,241,0.16);
+  --radius:    10px;
+  --radius-lg: 16px;
+  --font-main: 'Noto Sans SC', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-display: 'Syne', sans-serif;
+}
+
+html[data-theme="dark"] {
+  --bg:        #0d0d11;
+  --bg2:       #13131a;
+  --bg3:       #1a1a24;
+  --bg4:       #21212e;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8e8f0;
+  --text2:     #9a9ab7;
+  --text3:     #4a4a6a;
+  --shadow-sm: 0 12px 40px rgba(0,0,0,0.35);
+  --shadow-md: 0 32px 100px rgba(0,0,0,0.45);
+  --ring:      0 0 0 3px rgba(99,102,241,0.28);
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-main); font-size: 14px; line-height: 1.5; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+input, textarea { font-family: inherit; outline: none; }
+::selection { background: rgba(99,102,241,0.22); }
+
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+
+/* ── Layout ─────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Titlebar ───────────────────────────────────────── */
+#titlebar {
+  height: 48px; min-height: 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+#titlebar .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display); font-weight: 800; font-size: 18px;
+  background: linear-gradient(135deg, var(--indigo2), var(--emerald2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+#titlebar .logo span { font-weight: 400; opacity: 0.5; }
+.logo-mark {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(129,140,248,0.18), rgba(52,211,153,0.14));
+  border: 1px solid rgba(15,23,42,0.10);
+  box-shadow: var(--shadow-sm);
+  -webkit-text-fill-color: initial;
+}
+.logo-mark svg { display:block; }
+.win-controls { display: flex; gap: 8px; -webkit-app-region: no-drag; justify-content: flex-end; }
+.titlebar-spacer { width: 120px; }
+.win-btn {
+  width: 34px; height: 28px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.06s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+}
+.win-btn svg { width: 12px; height: 12px; display: block; }
+.win-btn:hover { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+.win-btn:active { transform: scale(0.98); }
+.win-btn:focus-visible { box-shadow: var(--ring); }
+.win-btn.close:hover { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.22); color: var(--red); }
+
+/* ── Auth Screen ────────────────────────────────────── */
+#auth-screen {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.auth-card {
+  width: 380px; padding: 40px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.auth-card h2 { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.auth-card p.sub { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px; }
+.form-group input {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-size: 14px;
+  transition: border-color 0.2s;
+}
+.form-group input:focus { border-color: var(--indigo); box-shadow: var(--ring); }
+.btn-primary {
+  width: 100%; padding: 11px;
+  background: var(--indigo); color: #fff;
+  border-radius: var(--radius); font-size: 14px; font-weight: 500;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 8px;
+}
+.btn-primary:hover { background: var(--indigo2); }
+.btn-primary:active { transform: scale(0.98); }
+.auth-toggle { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text2); }
+.auth-toggle a { color: var(--indigo2); cursor: pointer; text-decoration: none; }
+.auth-toggle a:hover { text-decoration: underline; }
+.auth-error { color: var(--red); font-size: 12px; margin-top: 8px; min-height: 18px; }
+
+/* ── Main Layout ────────────────────────────────────── */
+#main-layout { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Sidebar ────────────────────────────────────────── */
+#sidebar {
+  width: 220px; min-width: 220px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 16px 0;
+  overflow-y: auto;
+}
+.sidebar-section { padding: 0 12px; margin-bottom: 24px; }
+.sidebar-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text3); padding: 0 8px; margin-bottom: 6px; font-weight: 600;
+}
+.date-nav-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; color: var(--text2);
+  font-size: 13px; transition: all 0.15s; text-align: left;
+}
+.date-nav-btn:hover { background: var(--bg3); color: var(--text); }
+.date-nav-btn.active { background: rgba(99,102,241,0.12); color: var(--indigo-d); }
+.date-nav-btn .icon { width: 18px; text-align: center; font-size: 15px; }
+.date-nav-btn .badge {
+  margin-left: auto; background: var(--bg4); border-radius: 10px;
+  padding: 1px 7px; font-size: 11px; color: var(--text2);
+}
+.date-nav-btn.active .badge { background: rgba(99,102,241,0.18); color: var(--indigo-d); }
+
+.sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px 16px; }
+
+.user-info {
+  margin-top: auto; padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--indigo), var(--emerald));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.user-name { font-size: 13px; font-weight: 500; flex: 1; }
+.user-role { font-size: 11px; color: var(--text2); }
+.btn-logout {
+  padding: 4px 8px; border-radius: 6px; font-size: 12px;
+  color: var(--text3); transition: all 0.15s;
+}
+.btn-logout:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+
+/* ── Main Content ───────────────────────────────────── */
+#content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Content Header ─────────────────────────────────── */
+#content-header {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.date-display { flex: 1; }
+.date-display h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.date-display p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.date-nav-arrows { display: flex; gap: 6px; }
+.arrow-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2); font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.arrow-btn:hover { background: var(--bg4); color: var(--text); border-color: var(--border2); }
+.arrow-btn:focus-visible { box-shadow: var(--ring); }
+
+/* ── Task Input ─────────────────────────────────────── */
+#task-input-area { padding: 16px 28px; border-bottom: 1px solid var(--border); }
+.task-input-wrap {
+  display: flex; gap: 10px; align-items: center;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 8px 14px;
+  transition: border-color 0.2s;
+}
+.task-input-wrap:focus-within { border-color: var(--indigo); }
+.task-input-wrap .plus-icon { font-size: 18px; color: var(--text3); }
+#new-task-input {
+  flex: 1; background: none; border: none; color: var(--text);
+  font-size: 14px;
+}
+#new-task-input::placeholder { color: var(--text3); }
+.task-hint {
+  margin-top: 10px;
+  color: var(--text2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-hint .pill {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99,102,241,0.10);
+  border: 1px solid rgba(99,102,241,0.18);
+  color: var(--indigo-d);
+}
+html[data-theme="dark"] .task-hint .pill {
+  background: rgba(99,102,241,0.16);
+  border-color: rgba(99,102,241,0.28);
+  color: var(--indigo2);
+}
+
+/* ── Task List ──────────────────────────────────────── */
+#task-list-area { flex: 1; overflow-y: auto; padding: 12px 28px 28px; }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 300px; color: var(--text3);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+.empty-state p { font-size: 14px; }
+
+/* ── Task Node ──────────────────────────────────────── */
+.task-node { position: relative; }
+.task-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 8px;
+  transition: background 0.15s; cursor: default;
+  position: relative; group: true;
+}
+.task-row:hover { background: rgba(15,23,42,0.04); }
+html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
+.task-actions {
+  display: none; align-items: center; gap: 4px;
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 3px 6px;
+  box-shadow: var(--shadow-sm);
+}
+.task-row:hover .task-actions { display: flex; }
+
+.task-toggle {
+  width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); font-size: 10px; cursor: pointer;
+  border-radius: 4px; transition: all 0.15s;
+}
+.task-toggle:hover { color: var(--text2); background: var(--bg3); }
+.task-toggle.collapsed { opacity: 0.5; }
+
+.task-check {
+  width: 18px; height: 18px; flex-shrink: 0;
+  border: 2px solid var(--border2); border-radius: 5px;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.task-check:hover { border-color: var(--indigo); }
+.task-check.checked { background: var(--emerald); border-color: var(--emerald); }
+.task-check.partial { background: rgba(99,102,241,0.2); border-color: var(--indigo); }
+.task-check .check-icon { display: none; color: #fff; font-size: 11px; font-weight: 700; }
+.task-check.checked .check-icon { display: block; }
+.task-check.partial .check-icon { display: block; opacity: 0.6; }
+
+.task-label {
+  flex: 1; font-size: 13.5px; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: text;
+}
+.task-label.done { text-decoration: line-through; color: var(--text3); }
+.task-label[contenteditable="true"] {
+  outline: none; white-space: normal; overflow: visible;
+  background: transparent;
+}
+
+.task-timer-display {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--text2); flex-shrink: 0;
+}
+.task-timer-display.running { color: var(--emerald2); }
+.task-timer-display.urgent { color: var(--amber); animation: pulse 1s infinite; }
+
+.action-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--text2); transition: all 0.15s;
+}
+.action-btn:hover { background: var(--bg4); color: var(--text); }
+.action-btn:focus-visible { box-shadow: var(--ring); }
+.action-btn.run { color: var(--emerald); }
+.action-btn.run:hover { background: rgba(16,185,129,0.15); color: var(--emerald2); }
+.action-btn.running { color: var(--amber); animation: pulse 1.5s infinite; }
+.action-btn.del:hover { background: rgba(239,68,68,0.1); color: var(--red); }
+
+/* Children indent */
+.task-children { padding-left: 24px; }
+
+/* ── Timer Panel ────────────────────────────────────── */
+#timer-panel {
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 14px 28px;
+  display: none; align-items: center; gap: 16px;
+}
+#timer-panel.visible { display: flex; }
+.timer-task-name { flex: 1; font-size: 13px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timer-task-name strong { color: var(--text); }
+.timer-clock {
+  font-family: var(--font-mono); font-size: 28px; font-weight: 500;
+  color: var(--text); letter-spacing: 2px;
+  min-width: 100px; text-align: center;
+}
+.timer-clock.running { color: var(--emerald2); }
+.timer-clock.urgent { color: var(--amber); }
+.timer-controls { display: flex; align-items: center; gap: 8px; }
+.timer-step-btn {
+  padding: 4px 10px; border-radius: 6px; font-size: 13px;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  transition: all 0.15s;
+}
+.timer-step-btn:hover { background: var(--bg4); color: var(--text); }
+.timer-step-btn:focus-visible,
+.timer-pause-btn:focus-visible,
+.timer-stop-btn:focus-visible { box-shadow: var(--ring); }
+.timer-pause-btn {
+  padding: 6px 18px; border-radius: 8px;
+  background: var(--indigo); color: #fff; font-size: 13px; font-weight: 500;
+  transition: all 0.15s;
+}
+.timer-pause-btn:hover { background: var(--indigo2); }
+.timer-stop-btn {
+  padding: 6px 14px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  font-size: 13px; transition: all 0.15s;
+}
+.timer-stop-btn:hover { background: rgba(239,68,68,0.1); color: var(--red); border-color: var(--red); }
+
+/* ── Admin Panel ────────────────────────────────────── */
+#admin-btn {
+  padding: 6px 10px; border-radius: 6px; font-size: 12px;
+  color: var(--text3); transition: all 0.15s; margin-top: 4px; width: 100%;
+  text-align: left;
+}
+#admin-btn:hover { background: var(--bg3); color: var(--text2); }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(2,6,23,0.40); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.modal-card {
+  width: 480px; max-height: 80vh; overflow-y: auto;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 28px;
+  box-shadow: 0 32px 100px rgba(2,6,23,0.16);
+  animation: slideUp 0.2s ease;
+}
+.modal-card h3 { font-family: var(--font-display); font-size: 18px; margin-bottom: 4px; }
+.modal-card .modal-sub { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+.modal-close { float: right; font-size: 20px; color: var(--text3); cursor: pointer; line-height: 1; }
+.modal-close:hover { color: var(--text); }
+
+.invite-code-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--bg3); border-radius: 8px; margin-bottom: 8px;
+}
+.invite-code-item code { font-family: var(--font-mono); font-size: 14px; color: var(--indigo2); flex: 1; }
+.invite-code-item .code-status { font-size: 11px; color: var(--text3); }
+.invite-code-item .code-status.used { color: var(--emerald); }
+
+.user-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--bg3); border-radius: 8px; margin-bottom: 8px;
+}
+.user-list-name { flex: 1; font-size: 13px; }
+.user-list-role { font-size: 11px; color: var(--indigo2); }
+.btn-gen-code {
+  padding: 8px 16px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 13px; transition: all 0.15s;
+  margin-bottom: 16px;
+}
+.btn-gen-code:hover { background: var(--bg4); border-color: var(--indigo); }
+
+/* ── Alert Flash ────────────────────────────────────── */
+#alert-flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  display: none;
+}
+#alert-flash.active {
+  display: block;
+  animation: breatheGreen 1s ease-in-out infinite;
+}
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+@keyframes breatheGreen {
+  0%   { box-shadow: inset 0 0 0 rgba(16,185,129,0); background: rgba(16,185,129,0); }
+  50%  { box-shadow: inset 0 0 80px rgba(16,185,129,0.3); background: rgba(16,185,129,0.08); }
+  100% { box-shadow: inset 0 0 0 rgba(16,185,129,0); background: rgba(16,185,129,0); }
+}
+@keyframes nodeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.task-node { animation: nodeIn 0.18s ease; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Titlebar -->
+  <div id="titlebar">
+    <div class="titlebar-spacer"></div>
+    <div class="logo">
+      <span class="logo-mark" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="lg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#818CF8"/>
+              <stop offset="1" stop-color="#34D399"/>
+            </linearGradient>
+          </defs>
+          <path d="M12 4v16" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+          <path d="M7 10h10" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+          <circle cx="12" cy="4.5" r="2.2" fill="url(#lg)"/>
+          <circle cx="7" cy="10" r="2.2" fill="url(#lg)"/>
+          <circle cx="17" cy="10" r="2.2" fill="url(#lg)"/>
+          <circle cx="12" cy="19.5" r="2.2" fill="url(#lg)"/>
+        </svg>
+      </span>
+      Task<span>Tree</span>
+    </div>
+    <div class="win-controls">
+      <button class="win-btn min" onclick="api.minimize()" aria-label="最小化窗口" title="最小化">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 12.5h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="win-btn max" onclick="api.maximize()" aria-label="最大化/还原窗口" title="最大化/还原">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="7" y="7" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2.2"/>
+        </svg>
+      </button>
+      <button class="win-btn close" onclick="api.close()" aria-label="关闭窗口" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Auth Screen -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <h2 id="auth-title">欢迎回来</h2>
+      <p class="sub" id="auth-sub">登录你的 TaskTree 账号</p>
+      <div class="form-group">
+        <label>用户名</label>
+        <input id="auth-username" type="text" placeholder="输入用户名" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input id="auth-password" type="password" placeholder="输入密码" autocomplete="current-password">
+      </div>
+      <div class="form-group" id="invite-group" style="display:none">
+        <label>邀请码</label>
+        <input id="auth-invite" type="text" placeholder="输入邀请码">
+      </div>
+      <div class="auth-error" id="auth-error"></div>
+      <button class="btn-primary" id="auth-submit">登录</button>
+      <div class="auth-toggle">
+        <span id="auth-toggle-text">还没有账号？</span>
+        <a id="auth-toggle-link">注册</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Layout -->
+  <div id="main-layout" style="display:none">
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">日期视图</div>
+        <button class="date-nav-btn" id="btn-past"    onclick="setView('past')">
+          <span class="icon">📅</span> 过去
+          <span class="badge" id="badge-past">0</span>
+        </button>
+        <button class="date-nav-btn active" id="btn-today"  onclick="setView('today')">
+          <span class="icon">⭐</span> 今天
+          <span class="badge" id="badge-today">0</span>
+        </button>
+        <button class="date-nav-btn" id="btn-future"  onclick="setView('future')">
+          <span class="icon">🔮</span> 未来
+          <span class="badge" id="badge-future">0</span>
+        </button>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">操作</div>
+        <button class="date-nav-btn" onclick="showModal('admin')" id="admin-nav" style="display:none">
+          <span class="icon">🛠</span> 管理面板
+        </button>
+        <button class="date-nav-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="切换浅色/深色主题">
+          <span class="icon" id="theme-toggle-icon">☀️</span> 主题
+          <span class="badge" id="theme-toggle-badge">浅色</span>
+        </button>
+      </div>
+      <div style="flex:1"></div>
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div>
+          <div class="user-name" id="user-name-display">用户</div>
+          <div class="user-role" id="user-role-display">成员</div>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="退出登录">⏏</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content">
+      <!-- Header -->
+      <div id="content-header">
+        <div class="date-display">
+          <h1 id="date-title">今天</h1>
+          <p id="date-sub">加载中...</p>
+        </div>
+        <div class="date-nav-arrows">
+          <button class="arrow-btn" onclick="offsetDate(-1)">‹</button>
+          <button class="arrow-btn" onclick="offsetDate(0)" title="回到今天">●</button>
+          <button class="arrow-btn" onclick="offsetDate(1)">›</button>
+        </div>
+      </div>
+
+      <!-- Task Input -->
+      <div id="task-input-area">
+        <div class="task-input-wrap">
+          <span class="plus-icon">＋</span>
+          <input id="new-task-input" type="text" placeholder="添加任务，按 Enter 确认...">
+        </div>
+        <div class="task-hint" role="note" aria-label="任务拆解提示">
+          <span class="pill">建议</span>
+          <span>所有任务都应继续拆解，直到<strong>单个任务可以在 5 分钟内完成</strong>。</span>
+        </div>
+      </div>
+
+      <!-- Task List -->
+      <div id="task-list-area">
+        <div id="task-list"></div>
+      </div>
+
+      <!-- Timer Panel -->
+      <div id="timer-panel">
+        <div class="timer-task-name">正在计时：<strong id="timer-task-name-txt">-</strong></div>
+        <div class="timer-clock" id="timer-clock">05:00</div>
+        <div class="timer-controls">
+          <button class="timer-step-btn" onclick="adjustTimer(-5)">−5</button>
+          <button class="timer-step-btn" onclick="adjustTimer(5)">+5</button>
+          <button class="timer-pause-btn" id="timer-pause-btn" onclick="togglePause()">暂停</button>
+          <button class="timer-stop-btn" onclick="stopTimer()">停止</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Flash Overlay -->
+<div id="alert-flash"></div>
+
+<!-- Admin Modal -->
+<div class="modal-overlay" id="admin-modal" style="display:none" onclick="if(event.target===this)closeModal('admin')">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('admin')">×</button>
+    <h3>🛠 管理面板</h3>
+    <p class="modal-sub">管理用户和邀请码</p>
+
+    <div style="margin-bottom:20px">
+      <div class="sidebar-label" style="margin-bottom:10px">邀请码</div>
+      <button class="btn-gen-code" onclick="generateInviteCode()">＋ 生成新邀请码</button>
+      <div id="invite-list"></div>
+    </div>
+
+    <div>
+      <div class="sidebar-label" style="margin-bottom:10px">用户列表</div>
+      <div id="user-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+let DB = { users: [], tasks: [], inviteCodes: [], currentUser: null };
+let currentView = 'today';
+let currentDateOffset = 0; // days from today
+let timerState = {
+  taskId: null,
+  remaining: 0,   // seconds
+  running: false,
+  interval: null
+};
+let isAuthMode = 'login';
+let inlineAddParentId = null;
+let currentTheme = 'light';
+
+// ══════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+function hashPassword(p) {
+  // Simple hash for local app (not cryptographic)
+  let h = 5381;
+  for (let i = 0; i < p.length; i++) h = ((h << 5) + h) + p.charCodeAt(i);
+  return (h >>> 0).toString(16);
+}
+
+function dateKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+function todayKey() { return dateKey(0); }
+
+function applyTheme(theme) {
+  currentTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = currentTheme;
+  const iconEl = document.getElementById('theme-toggle-icon');
+  const badgeEl = document.getElementById('theme-toggle-badge');
+  if (iconEl) iconEl.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+  if (badgeEl) badgeEl.textContent = currentTheme === 'dark' ? '深色' : '浅色';
+  try { localStorage.setItem('tasktree_theme', currentTheme); } catch {}
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
+
+function formatDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  const days = ['日','一','二','三','四','五','六'];
+  return `${d.getMonth()+1}月${d.getDate()}日  周${days[d.getDay()]}`;
+}
+
+function fmtTime(sec) {
+  const m = Math.floor(Math.abs(sec) / 60).toString().padStart(2,'0');
+  const s = (Math.abs(sec) % 60).toString().padStart(2,'0');
+  return (sec < 0 ? '-' : '') + m + ':' + s;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ══════════════════════════════════════════════════════════════
+async function loadDB() {
+  DB = await api.loadData();
+  if (!DB.users)       DB.users = [];
+  if (!DB.tasks)       DB.tasks = [];
+  if (!DB.inviteCodes) DB.inviteCodes = [];
+  // Seed: create default admin if no users
+  if (DB.users.length === 0) {
+    DB.users.push({ id: uid(), username: 'admin', password: hashPassword('admin123'), role: 'admin', createdAt: new Date().toISOString() });
+    await saveDB();
+  }
+}
+
+async function saveDB() { await api.saveData(DB); }
+
+// ══════════════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════════════
+function toggleAuthMode() {
+  isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
+  const isReg = isAuthMode === 'register';
+  document.getElementById('auth-title').textContent = isReg ? '创建账号' : '欢迎回来';
+  document.getElementById('auth-sub').textContent = isReg ? '使用邀请码注册' : '登录你的 TaskTree 账号';
+  document.getElementById('auth-submit').textContent = isReg ? '注册' : '登录';
+  document.getElementById('auth-toggle-text').textContent = isReg ? '已有账号？' : '还没有账号？';
+  document.getElementById('auth-toggle-link').textContent = isReg ? '登录' : '注册';
+  document.getElementById('invite-group').style.display = isReg ? '' : 'none';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function doAuth() {
+  const username = document.getElementById('auth-username').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+
+  if (!username || !password) { errEl.textContent = '请填写用户名和密码'; return; }
+
+  if (isAuthMode === 'login') {
+    const user = DB.users.find(u => u.username === username && u.password === hashPassword(password));
+    if (!user) { errEl.textContent = '用户名或密码错误'; return; }
+    DB.currentUser = user.id;
+    await saveDB();
+    enterApp(user);
+  } else {
+    const inviteCode = document.getElementById('auth-invite').value.trim();
+    if (DB.users.find(u => u.username === username)) { errEl.textContent = '用户名已被使用'; return; }
+    // First user is admin, others need invite
+    if (DB.users.length > 0) {
+      const code = DB.inviteCodes.find(c => c.code === inviteCode && !c.used);
+      if (!code) { errEl.textContent = '邀请码无效或已使用'; return; }
+      code.used = true; code.usedBy = username;
+    }
+    const user = { id: uid(), username, password: hashPassword(password), role: 'member', createdAt: new Date().toISOString() };
+    DB.users.push(user);
+    DB.currentUser = user.id;
+    await saveDB();
+    enterApp(user);
+  }
+}
+
+function enterApp(user) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-layout').style.display = 'flex';
+  document.getElementById('user-name-display').textContent = user.username;
+  document.getElementById('user-avatar').textContent = user.username[0].toUpperCase();
+  document.getElementById('user-role-display').textContent = user.role === 'admin' ? '管理员' : '成员';
+  if (user.role === 'admin') document.getElementById('admin-nav').style.display = '';
+  currentDateOffset = 0;
+  setView('today');
+  renderTaskList();
+  updateBadges();
+}
+
+async function logout() {
+  stopTimer();
+  DB.currentUser = null;
+  await saveDB();
+  document.getElementById('main-layout').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-error').textContent = '';
+}
+
+function currentUser() { return DB.users.find(u => u.id === DB.currentUser); }
+
+// ══════════════════════════════════════════════════════════════
+//  DATE VIEW
+// ══════════════════════════════════════════════════════════════
+function setView(view) {
+  currentView = view;
+  // Map view to offset logic
+  if (view === 'today') currentDateOffset = 0;
+  ['past','today','future'].forEach(v => {
+    document.getElementById('btn-'+v).classList.toggle('active', v === view);
+  });
+  updateDateDisplay();
+  renderTaskList();
+}
+
+function offsetDate(delta) {
+  if (delta === 0) { currentDateOffset = 0; currentView = 'today'; }
+  else currentDateOffset += delta;
+  // Auto-set view
+  if (currentDateOffset < 0) currentView = 'past';
+  else if (currentDateOffset > 0) currentView = 'future';
+  else currentView = 'today';
+  ['past','today','future'].forEach(v => {
+    document.getElementById('btn-'+v).classList.toggle('active', v === currentView);
+  });
+  updateDateDisplay();
+  renderTaskList();
+}
+
+function updateDateDisplay() {
+  const key = dateKey(currentDateOffset);
+  const titles = { '-': '过去', '0': '今天', '+': '未来' };
+  let label;
+  if (currentDateOffset === 0) label = '今天';
+  else if (currentDateOffset === -1) label = '昨天';
+  else if (currentDateOffset === 1) label = '明天';
+  else label = formatDate(key);
+  document.getElementById('date-title').textContent = label;
+  document.getElementById('date-sub').textContent = formatDate(key);
+}
+
+function updateBadges() {
+  const uid = DB.currentUser;
+  const today = todayKey();
+  const myTasks = DB.tasks.filter(t => t.userId === uid && !t.parentId);
+  const past   = myTasks.filter(t => t.date < today).length;
+  const todayC = myTasks.filter(t => t.date === today).length;
+  const future = myTasks.filter(t => t.date > today).length;
+  document.getElementById('badge-past').textContent   = past;
+  document.getElementById('badge-today').textContent  = todayC;
+  document.getElementById('badge-future').textContent = future;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TASKS
+// ══════════════════════════════════════════════════════════════
+function tasksForDate(dateISO) {
+  return DB.tasks.filter(t => t.userId === DB.currentUser && t.date === dateISO);
+}
+
+function rootTasksForDate(dateISO) {
+  return tasksForDate(dateISO).filter(t => !t.parentId).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function childrenOf(parentId) {
+  return DB.tasks.filter(t => t.parentId === parentId).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+async function addTask(text, parentId = null) {
+  const date = dateKey(currentDateOffset);
+  const task = {
+    id: uid(), userId: DB.currentUser, date, parentId,
+    text, done: false, collapsed: false,
+    timerSeconds: 5 * 60, timerUsed: 0,
+    createdAt: new Date().toISOString()
+  };
+  DB.tasks.push(task);
+  await saveDB();
+  updateBadges();
+  renderTaskList();
+  return task;
+}
+
+function beginAddChild(parentId) {
+  inlineAddParentId = parentId;
+  const parent = DB.tasks.find(t => t.id === parentId);
+  if (parent && parent.collapsed) parent.collapsed = false;
+  saveDB();
+  renderTaskList();
+  setTimeout(() => {
+    const input = document.querySelector(`input[data-inline-child-for="${parentId}"]`);
+    if (input) input.focus();
+  }, 0);
+}
+
+async function commitInlineChild(parentId, text) {
+  const value = (text || '').trim();
+  if (!value) return;
+  await addTask(value, parentId);
+}
+
+function cancelInlineChild() {
+  inlineAddParentId = null;
+  renderTaskList();
+}
+
+async function deleteTask(taskId) {
+  // Delete task and all descendants
+  const toDelete = [taskId];
+  const collectChildren = (pid) => {
+    childrenOf(pid).forEach(c => { toDelete.push(c.id); collectChildren(c.id); });
+  };
+  collectChildren(taskId);
+  DB.tasks = DB.tasks.filter(t => !toDelete.includes(t.id));
+  if (timerState.taskId && toDelete.includes(timerState.taskId)) stopTimer();
+  await saveDB();
+  updateBadges();
+  renderTaskList();
+}
+
+async function toggleDone(taskId) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.done = !task.done;
+  // If marking done, also mark all children done
+  const markChildren = (pid, done) => {
+    childrenOf(pid).forEach(c => { c.done = done; markChildren(c.id, done); });
+  };
+  markChildren(taskId, task.done);
+  await propagateParentStatus(task.parentId);
+  await saveDB();
+  renderTaskList();
+}
+
+async function propagateParentStatus(parentId) {
+  if (!parentId) return;
+  const parent = DB.tasks.find(t => t.id === parentId);
+  if (!parent) return;
+  const children = childrenOf(parentId);
+  if (children.length === 0) return;
+  const allDone = children.every(c => c.done);
+  parent.done = allDone;
+  await propagateParentStatus(parent.parentId);
+}
+
+async function renameTask(taskId, newText) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (task) { task.text = newText; await saveDB(); }
+}
+
+async function toggleCollapse(taskId) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (task) { task.collapsed = !task.collapsed; await saveDB(); renderTaskList(); }
+}
+
+// ── Check state for task (for partial) ──────────────────────
+function taskCheckState(taskId) {
+  const children = childrenOf(taskId);
+  if (children.length === 0) {
+    return DB.tasks.find(t => t.id === taskId)?.done ? 'checked' : '';
+  }
+  const doneCount = children.filter(c => c.done).length;
+  if (doneCount === 0) return '';
+  if (doneCount === children.length) return 'checked';
+  return 'partial';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════════════
+function renderTaskList() {
+  const date = dateKey(currentDateOffset);
+  if (inlineAddParentId && !tasksForDate(date).some(t => t.id === inlineAddParentId)) {
+    inlineAddParentId = null;
+  }
+  const roots = rootTasksForDate(date);
+  const container = document.getElementById('task-list');
+
+  if (roots.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🌱</div>
+      <p>今天还没有任务，添加第一个吧</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  roots.forEach(task => container.appendChild(renderNode(task)));
+}
+
+function renderNode(task) {
+  const children = childrenOf(task.id);
+  const wantsInlineAdd = inlineAddParentId === task.id;
+  const hasChildren = children.length > 0 || wantsInlineAdd;
+  const checkState = taskCheckState(task.id);
+  const isRunning = timerState.taskId === task.id && timerState.running;
+  const hasTimer = task.timerUsed > 0 || isRunning;
+
+  const node = document.createElement('div');
+  node.className = 'task-node';
+  node.dataset.id = task.id;
+
+  // Row
+  const row = document.createElement('div');
+  row.className = 'task-row';
+
+  // Toggle
+  const toggle = document.createElement('div');
+  toggle.className = 'task-toggle' + (task.collapsed ? ' collapsed' : '');
+  toggle.innerHTML = hasChildren ? (task.collapsed ? '▶' : '▼') : '&nbsp;';
+  if (hasChildren) toggle.onclick = () => toggleCollapse(task.id);
+  row.appendChild(toggle);
+
+  // Check
+  const check = document.createElement('div');
+  check.className = 'task-check ' + checkState;
+  check.innerHTML = '<span class="check-icon">' + (checkState === 'partial' ? '−' : '✓') + '</span>';
+  check.onclick = () => toggleDone(task.id);
+  row.appendChild(check);
+
+  // Label
+  const label = document.createElement('div');
+  label.className = 'task-label' + (task.done ? ' done' : '');
+  label.textContent = task.text;
+  label.title = 'Double-click to edit';
+  label.ondblclick = () => startEditLabel(label, task.id);
+  row.appendChild(label);
+
+  // Timer display
+  if (timerState.taskId === task.id) {
+    const td = document.createElement('div');
+    td.className = 'task-timer-display' + (isRunning ? ' running' : '') + (timerState.remaining < 60 && timerState.remaining > 0 ? ' urgent' : '');
+    td.textContent = fmtTime(timerState.remaining);
+    row.appendChild(td);
+  }
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'task-actions';
+
+  // Start/pause timer btn
+  const timerBtn = document.createElement('button');
+  timerBtn.className = 'action-btn ' + (isRunning ? 'running' : 'run');
+  timerBtn.title = isRunning ? '暂停计时' : '开始计时';
+  timerBtn.textContent = isRunning ? '⏸' : '▶';
+  timerBtn.onclick = () => {
+    if (timerState.taskId === task.id) togglePause();
+    else startTimer(task.id);
+  };
+  actions.appendChild(timerBtn);
+
+  // Add child btn
+  const addBtn = document.createElement('button');
+  addBtn.className = 'action-btn';
+  addBtn.title = '添加子任务';
+  addBtn.textContent = '＋';
+  addBtn.onclick = () => beginAddChild(task.id);
+  actions.appendChild(addBtn);
+
+  // Delete btn
+  const delBtn = document.createElement('button');
+  delBtn.className = 'action-btn del';
+  delBtn.title = '删除任务';
+  delBtn.textContent = '✕';
+  delBtn.onclick = () => deleteTask(task.id);
+  actions.appendChild(delBtn);
+
+  row.appendChild(actions);
+  node.appendChild(row);
+
+  // Children
+  if (hasChildren && !task.collapsed) {
+    const childContainer = document.createElement('div');
+    childContainer.className = 'task-children';
+
+    if (wantsInlineAdd) {
+      const wrap = document.createElement('div');
+      wrap.className = 'task-row';
+      wrap.style.background = 'var(--bg2)';
+      wrap.style.border = '1px solid var(--border)';
+      wrap.style.margin = '6px 0';
+      wrap.style.padding = '8px 10px';
+
+      const spacer = document.createElement('div');
+      spacer.style.width = '16px';
+      wrap.appendChild(spacer);
+
+      const dot = document.createElement('div');
+      dot.style.width = '18px';
+      dot.style.height = '18px';
+      dot.style.borderRadius = '5px';
+      dot.style.border = '2px dashed var(--border2)';
+      dot.style.opacity = '0.7';
+      wrap.appendChild(dot);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = '输入子任务，Enter 创建，Esc 取消…';
+      input.dataset.inlineChildFor = task.id;
+      input.dataset.inlineCommitted = '0';
+      input.style.flex = '1';
+      input.style.background = 'transparent';
+      input.style.border = 'none';
+      input.style.color = 'var(--text)';
+      input.style.fontSize = '13.5px';
+      input.onkeydown = async (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelInlineChild();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (input.dataset.inlineCommitted === '1') return;
+          input.dataset.inlineCommitted = '1';
+          const v = e.target.value;
+          inlineAddParentId = null;
+          await commitInlineChild(task.id, v);
+          renderTaskList();
+        }
+      };
+      input.onblur = async (e) => {
+        if (input.dataset.inlineCommitted === '1') return;
+        input.dataset.inlineCommitted = '1';
+        const v = e.target.value;
+        inlineAddParentId = null;
+        if (v && v.trim()) await commitInlineChild(task.id, v);
+        renderTaskList();
+      };
+      wrap.appendChild(input);
+
+      childContainer.appendChild(wrap);
+    }
+
+    children.forEach(c => childContainer.appendChild(renderNode(c)));
+    node.appendChild(childContainer);
+  }
+
+  return node;
+}
+
+function startEditLabel(labelEl, taskId) {
+  labelEl.contentEditable = 'true';
+  labelEl.focus();
+  const range = document.createRange();
+  range.selectNodeContents(labelEl);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+  const finish = async () => {
+    labelEl.contentEditable = 'false';
+    const newText = labelEl.textContent.trim();
+    if (newText) await renameTask(taskId, newText);
+    else renderTaskList();
+  };
+  labelEl.onblur = finish;
+  labelEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); labelEl.blur(); } };
+}
+
+// 子任务创建改为行内输入框（避免 Electron/Windows 下 prompt 弹窗不可用）
+
+// ══════════════════════════════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════════════════════════════
+function startTimer(taskId) {
+  // Stop previous
+  if (timerState.interval) clearInterval(timerState.interval);
+
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  // Restore remaining or full duration
+  const remaining = task.timerSeconds - task.timerUsed;
+  timerState = { taskId, remaining: Math.max(remaining, 0), running: true, interval: null };
+  timerState.interval = setInterval(timerTick, 1000);
+
+  updateTimerPanel();
+  renderTaskList();
+}
+
+function timerTick() {
+  if (!timerState.running) return;
+  timerState.remaining--;
+
+  // Persist every 5s
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (task) {
+    task.timerUsed = task.timerSeconds - timerState.remaining;
+    if (timerState.remaining % 5 === 0) saveDB();
+  }
+
+  updateTimerPanel();
+
+  // Partial re-render timer display inline
+  const node = document.querySelector(`.task-node[data-id="${timerState.taskId}"]`);
+  if (node) {
+    const td = node.querySelector('.task-timer-display');
+    if (td) { td.textContent = fmtTime(timerState.remaining); }
+  }
+
+  if (timerState.remaining <= 0) {
+    onTimerExpired();
+  }
+}
+
+function togglePause() {
+  if (!timerState.taskId) return;
+  timerState.running = !timerState.running;
+  if (timerState.running) {
+    timerState.interval = setInterval(timerTick, 1000);
+    document.getElementById('timer-pause-btn').textContent = '暂停';
+  } else {
+    clearInterval(timerState.interval);
+    document.getElementById('timer-pause-btn').textContent = '继续';
+  }
+}
+
+function stopTimer() {
+  clearInterval(timerState.interval);
+  timerState = { taskId: null, remaining: 0, running: false, interval: null };
+  document.getElementById('timer-panel').classList.remove('visible');
+  stopTitleFlash();
+  renderTaskList();
+}
+
+function adjustTimer(deltaMins) {
+  timerState.remaining += deltaMins * 60;
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (task) {
+    task.timerSeconds += deltaMins * 60;
+    if (task.timerSeconds < 60) task.timerSeconds = 60;
+    task.timerUsed = task.timerSeconds - timerState.remaining;
+    saveDB();
+  }
+  updateTimerPanel();
+}
+
+function updateTimerPanel() {
+  const panel = document.getElementById('timer-panel');
+  if (!timerState.taskId) { panel.classList.remove('visible'); return; }
+  panel.classList.add('visible');
+
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  document.getElementById('timer-task-name-txt').textContent = task?.text || '-';
+
+  const clock = document.getElementById('timer-clock');
+  clock.textContent = fmtTime(timerState.remaining);
+  clock.className = 'timer-clock' + (timerState.running ? ' running' : '') + (timerState.remaining < 60 && timerState.remaining > 0 ? ' urgent' : '');
+  document.getElementById('timer-pause-btn').textContent = timerState.running ? '暂停' : '继续';
+}
+
+// ── Timer Expired ─────────────────────────────────────────────
+let flashInterval = null;
+let titleFlash = null;
+
+function onTimerExpired() {
+  clearInterval(timerState.interval);
+  timerState.running = false;
+
+  // 1. Full-screen green breathe
+  const flash = document.getElementById('alert-flash');
+  flash.classList.add('active');
+  setTimeout(() => { flash.classList.remove('active'); }, 8000);
+
+  // 2. Title flash
+  let alt = true;
+  titleFlash = setInterval(() => {
+    api.setTitle(alt ? '【⏰ 时间到！】TaskTree' : 'TaskTree');
+    alt = !alt;
+  }, 600);
+  setTimeout(() => stopTitleFlash(), 10000);
+
+  // 3. System notification
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  api.notify({ title: '⏰ 时间到！', body: `任务「${task?.text || ''}」计时结束` });
+
+  updateTimerPanel();
+}
+
+function stopTitleFlash() {
+  if (titleFlash) { clearInterval(titleFlash); titleFlash = null; }
+  api.setTitle('TaskTree');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════════════════════════════════
+function showModal(name) {
+  if (name === 'admin') {
+    renderInviteList();
+    renderUserList();
+    document.getElementById('admin-modal').style.display = 'flex';
+  }
+}
+function closeModal(name) {
+  document.getElementById(name + '-modal').style.display = 'none';
+}
+
+function renderInviteList() {
+  const el = document.getElementById('invite-list');
+  el.innerHTML = '';
+  DB.inviteCodes.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'invite-code-item';
+    div.innerHTML = `<code>${c.code}</code>
+      <span class="code-status ${c.used ? 'used' : ''}">${c.used ? '已使用 by '+c.usedBy : '未使用'}</span>`;
+    el.appendChild(div);
+  });
+  if (DB.inviteCodes.length === 0) el.innerHTML = '<p style="color:var(--text3);font-size:13px">暂无邀请码</p>';
+}
+
+function renderUserList() {
+  const el = document.getElementById('user-list');
+  el.innerHTML = '';
+  DB.users.forEach(u => {
+    const div = document.createElement('div');
+    div.className = 'user-list-item';
+    div.innerHTML = `<div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username[0].toUpperCase()}</div>
+      <span class="user-list-name">${u.username}</span>
+      <span class="user-list-role">${u.role === 'admin' ? '管理员' : '成员'}</span>`;
+    el.appendChild(div);
+  });
+}
+
+async function generateInviteCode() {
+  const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+  DB.inviteCodes.push({ code, used: false, usedBy: null, createdAt: new Date().toISOString() });
+  await saveDB();
+  renderInviteList();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT & EVENTS
+// ══════════════════════════════════════════════════════════════
+document.getElementById('auth-toggle-link').onclick = toggleAuthMode;
+document.getElementById('auth-submit').onclick = doAuth;
+['auth-username','auth-password','auth-invite'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+});
+
+document.getElementById('new-task-input').addEventListener('keydown', async e => {
+  if (e.key === 'Enter') {
+    const text = e.target.value.trim();
+    if (text) { await addTask(text); e.target.value = ''; }
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────────────
+(async function boot() {
+  await loadDB();
+  // Theme (persisted)
+  try {
+    const t = localStorage.getItem('tasktree_theme');
+    if (t) applyTheme(t);
+    else applyTheme('light');
+  } catch {
+    applyTheme('light');
+  }
+  updateDateDisplay();
+  // Auto-login if session exists
+  if (DB.currentUser) {
+    const user = DB.users.find(u => u.id === DB.currentUser);
+    if (user) { enterApp(user); return; }
+  }
+  document.getElementById('auth-screen').style.display = 'flex';
+})();
+</script>
+</body>
+</html>
