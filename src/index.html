@@ -602,6 +602,65 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   animation: breatheGreen 1s ease-in-out infinite;
 }
 
+/* ── Timer Expired Modal ───────────────────────────────────── */
+.timer-expired-card {
+  width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: 0 32px 100px rgba(2,6,23,0.16);
+  animation: slideUp 0.2s ease;
+  text-align: center;
+}
+.timer-expired-icon {
+  width: 72px; height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(245,158,11,0.08));
+  border: 2px solid rgba(239,68,68,0.2);
+  display: flex; align-items: center; justify-content: center;
+}
+.timer-expired-icon svg { width: 36px; height: 36px; }
+.timer-expired-card h3 {
+  font-family: var(--font-display);
+  font-size: 24px; font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.timer-expired-card .timer-task-name {
+  font-size: 15px;
+  color: var(--text2);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.timer-expired-actions {
+  display: flex; gap: 12px; justify-content: center;
+}
+.btn-confirm {
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--indigo);
+  color: #fff;
+  border: none;
+}
+.btn-confirm:hover { background: var(--indigo2); }
+.btn-confirm:active { transform: scale(0.98); }
+.btn-close-modal {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-close-modal:hover { background: var(--bg4); color: var(--text); }
+
 /* ── Animations ─────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp {
@@ -845,6 +904,24 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
     <div>
       <div class="sidebar-label" style="margin-bottom:10px">用户列表</div>
       <div id="user-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Timer Expired Modal -->
+<div class="modal-overlay" id="timer-expired-modal" style="display:none">
+  <div class="timer-expired-card">
+    <div class="timer-expired-icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v1M12 21v1M4.22 4.22l.71.71M18.36 18.36l.71.71M2 12h1M21 12h1M4.22 19.78l.71-.71M18.36 5.64l.71-.71" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="6" stroke="var(--red)" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <h3>⏰ 时间到！</h3>
+    <p class="timer-task-name" id="timer-expired-task-name">任务已完成计时时长</p>
+    <div class="timer-expired-actions">
+      <button class="btn-close-modal" onclick="closeTimerExpiredModal()">稍后处理</button>
+      <button class="btn-confirm" onclick="confirmTimerExpired()">我知道了</button>
     </div>
   </div>
 </div>
@@ -1654,10 +1731,16 @@ function onTimerExpired() {
   clearInterval(timerState.interval);
   timerState.running = false;
 
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+
+  // Show timer expired modal
+  const modal = document.getElementById('timer-expired-modal');
+  document.getElementById('timer-expired-task-name').textContent = `任务「${task?.text || ''}」已完成计时时长`;
+  modal.style.display = 'flex';
+
   // 1. Full-screen green breathe
   const flash = document.getElementById('alert-flash');
   flash.classList.add('active');
-  setTimeout(() => { flash.classList.remove('active'); }, 8000);
 
   // 2. Title flash
   let alt = true;
@@ -1665,13 +1748,22 @@ function onTimerExpired() {
     api.setTitle(alt ? '【⏰ 时间到！】TaskTree' : 'TaskTree');
     alt = !alt;
   }, 600);
-  setTimeout(() => stopTitleFlash(), 10000);
 
   // 3. System notification
-  const task = DB.tasks.find(t => t.id === timerState.taskId);
   api.notify({ title: '⏰ 时间到！', body: `任务「${task?.text || ''}」计时结束` });
 
   updateTimerPanel();
+}
+
+function closeTimerExpiredModal() {
+  document.getElementById('timer-expired-modal').style.display = 'none';
+}
+
+function confirmTimerExpired() {
+  closeTimerExpiredModal();
+  const flash = document.getElementById('alert-flash');
+  flash.classList.remove('active');
+  stopTitleFlash();
 }
 
 function stopTitleFlash() {
