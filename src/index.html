@@ -165,7 +165,57 @@ input, textarea { font-family: inherit; outline: none; }
   display: flex; flex-direction: column;
   padding: 16px 0;
   overflow-y: auto;
+  transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease;
 }
+#sidebar.collapsed {
+  width: 56px; min-width: 56px;
+  padding: 16px 0;
+}
+#sidebar.collapsed .sidebar-section,
+#sidebar.collapsed .sidebar-label,
+#sidebar.collapsed .date-nav-btn .badge,
+#sidebar.collapsed .progress-card,
+#sidebar.collapsed .sidebar-divider,
+#sidebar.collapsed .user-info,
+#sidebar.collapsed .logo span,
+#sidebar.collapsed #admin-btn {
+  display: none;
+}
+#sidebar.collapsed .date-nav-btn {
+  justify-content: center; padding: 8px;
+}
+#sidebar.collapsed .date-nav-btn .icon { margin: 0; }
+#sidebar.collapsed .user-avatar { margin: 0 auto; }
+#sidebar.collapsed .logo-mark { margin: 0 auto; }
+
+.sidebar-toggle {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 48px;
+  border-radius: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-toggle::before {
+  content: '';
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--text3);
+  transition: all 0.15s;
+}
+.sidebar-toggle:hover { background: var(--bg4); }
+.sidebar-toggle:hover::before { background: var(--text); }
+#sidebar.collapsed .sidebar-toggle::before { transform: rotate(90deg); }
 .sidebar-section { padding: 0 12px; margin-bottom: 24px; }
 .sidebar-label {
   font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
@@ -647,7 +697,8 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   <div id="main-layout" style="display:none">
 
     <!-- Sidebar -->
-    <div id="sidebar">
+    <div id="sidebar" style="position: relative;">
+      <div class="sidebar-toggle" onclick="toggleSidebar()" title="展开/收起侧边栏">‹</div>
       <div class="sidebar-section">
         <div class="sidebar-label">日期视图</div>
         <button class="date-nav-btn" id="btn-past"    onclick="setView('past')">
@@ -815,6 +866,7 @@ let timerState = {
 let isAuthMode = 'login';
 let inlineAddParentId = null;
 let currentTheme = 'light';
+let sidebarCollapsed = false;
 let expandedNoteId = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -849,6 +901,13 @@ function applyTheme(theme) {
 
 function toggleTheme() {
   applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
+
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed', sidebarCollapsed);
+  try { localStorage.setItem('tasktree_sidebar', sidebarCollapsed ? 'collapsed' : 'expanded'); } catch {}
 }
 
 function formatDate(iso) {
@@ -1636,6 +1695,14 @@ document.getElementById('new-task-input').addEventListener('keydown', async e =>
   } catch {
     applyTheme('light');
   }
+  // Sidebar state (persisted)
+  try {
+    const s = localStorage.getItem('tasktree_sidebar');
+    if (s === 'collapsed') {
+      sidebarCollapsed = true;
+      document.getElementById('sidebar').classList.add('collapsed');
+    }
+  } catch {}
   updateDateDisplay();
   // Auto-login if session exists
   if (DB.currentUser) {
