@@ -1720,6 +1720,11 @@ function adjustTimer(deltaMins) {
   const newSeconds = deltaMins * 60;
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (task) {
+    // 增加剩余时间
+    timerState.remaining += newSeconds;
+    if (timerState.remaining < 0) timerState.remaining = 0;
+    
+    // 增加总时间和预估时间
     task.timerSeconds += newSeconds;
     task.estimatedSeconds = task.timerSeconds;
     if (task.timerSeconds < 60) task.timerSeconds = 60;
@@ -1727,10 +1732,10 @@ function adjustTimer(deltaMins) {
     if (task.timerSeconds - task.timerUsed < 0) task.timerUsed = 0;
     
     timerState.timerSeconds = task.timerSeconds;
-    timerState.remaining = Math.max(timerState.remaining + newSeconds, 0);
     
+    // 调整startTime，保持elapsed不变，使remaining正确
     if (timerState.running) {
-      timerState.startTime = Date.now() - ((task.timerSeconds - timerState.remaining) * 1000);
+      timerState.startTime = Date.now() - ((timerState.timerSeconds - timerState.remaining - (timerState.pausedAt || 0)) * 1000);
     }
     saveDB();
   }
