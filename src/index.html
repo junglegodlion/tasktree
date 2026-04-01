@@ -1435,7 +1435,6 @@ function renderNode(task) {
     label.appendChild(overtimeTag);
   }
   
-  label.title = 'Double-click to edit';
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
 
