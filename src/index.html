@@ -1424,6 +1424,7 @@ function renderNode(task) {
   
   const labelContent = document.createElement('span');
   labelContent.textContent = task.text;
+  labelContent.title = '双击修改任务名称';
   label.appendChild(labelContent);
   
   // Overtime tag
@@ -1435,7 +1436,7 @@ function renderNode(task) {
     label.appendChild(overtimeTag);
   }
   
-  label.title = '双击修改任务名称';
+  label.title = '';
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
 
