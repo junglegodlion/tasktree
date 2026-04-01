@@ -1721,7 +1721,9 @@ function adjustTimer(deltaMins) {
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (task) {
     task.timerSeconds += newSeconds;
+    task.estimatedSeconds = task.timerSeconds;
     if (task.timerSeconds < 60) task.timerSeconds = 60;
+    if (task.estimatedSeconds < 60) task.estimatedSeconds = 60;
     if (task.timerSeconds - task.timerUsed < 0) task.timerUsed = 0;
     
     timerState.timerSeconds = task.timerSeconds;
