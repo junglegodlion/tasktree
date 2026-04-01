@@ -897,6 +897,10 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
       <div id="timer-panel">
         <div class="timer-task-name">正在计时：<strong id="timer-task-name-txt">-</strong></div>
         <div class="timer-clock" id="timer-clock">05:00</div>
+        <div class="timer-stats" id="timer-stats" style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--text3);margin-left:12px">
+          <div>预估：<span id="timer-estimated">5分钟</span></div>
+          <div>实际：<span id="timer-actual">0分钟</span></div>
+        </div>
         <div class="timer-controls">
           <button class="timer-step-btn" onclick="adjustTimer(-5)">−5</button>
           <button class="timer-step-btn" onclick="adjustTimer(5)">+5</button>
@@ -1216,7 +1220,9 @@ async function addTask(text, parentId = null) {
   const task = {
     id: uid(), userId: DB.currentUser, date, parentId,
     text, done: false, collapsed: false,
-    timerSeconds: 5 * 60, timerUsed: 0, note: '', isOvertime: false,
+    timerSeconds: 5 * 60, timerUsed: 0, 
+    estimatedSeconds: 5 * 60, actualSeconds: 0,
+    note: '', isOvertime: false,
     createdAt: new Date().toISOString()
   };
   DB.tasks.push(task);
@@ -1697,6 +1703,7 @@ function stopTimer() {
         ? Math.floor((Date.now() - timerState.startTime) / 1000)
         : timerState.pausedAt || 0;
       task.timerUsed = Math.min(task.timerSeconds, elapsed);
+      task.actualSeconds = task.timerUsed;
       saveDB();
     }
   }
@@ -1749,6 +1756,10 @@ function confirmTimerTime() {
   if (mins >= 1 && mins <= 180 && !isNaN(mins)) {
     const task = DB.tasks.find(t => t.id === timerState.taskId);
     if (task) {
+      // Update estimated time only if not set before or still using default
+      if (!task.estimatedSeconds || task.estimatedSeconds === 5 * 60) {
+        task.estimatedSeconds = mins * 60;
+      }
       task.timerSeconds = mins * 60;
       task.timerUsed = 0;
       timerState.remaining = task.timerSeconds;
@@ -1804,6 +1815,18 @@ function updateTimerPanel() {
   clock.textContent = fmtTime(timerState.remaining);
   clock.className = 'timer-clock' + (timerState.running ? ' running' : '') + (timerState.remaining < 60 && timerState.remaining > 0 ? ' urgent' : '');
   document.getElementById('timer-pause-btn').textContent = timerState.running ? '暂停' : '继续';
+  
+  // Update estimated and actual time display
+  const estimatedEl = document.getElementById('timer-estimated');
+  const actualEl = document.getElementById('timer-actual');
+  if (task) {
+    estimatedEl.textContent = fmtTime(task.estimatedSeconds || task.timerSeconds);
+    const actual = task.actualSeconds || task.timerUsed || 0;
+    actualEl.textContent = fmtTime(actual);
+  } else {
+    estimatedEl.textContent = '5分钟';
+    actualEl.textContent = '0分钟';
+  }
 }
 
 // ── Timer Expired ─────────────────────────────────────────────
@@ -1843,6 +1866,10 @@ function closeTimerExpiredModal() {
 }
 
 function confirmTimerExpired() {
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (task) {
+    task.actualSeconds = task.timerUsed;
+  }
   closeTimerExpiredModal();
   const flash = document.getElementById('alert-flash');
   flash.classList.remove('active');
@@ -1852,6 +1879,9 @@ function confirmTimerExpired() {
 async function delayTimer5Min() {
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (!task) return;
+  
+  // Record actual time used so far before adding delay
+  task.actualSeconds = task.timerUsed;
   
   // Mark task as overtime
   if (!task.isOvertime) {
