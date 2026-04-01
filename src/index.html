@@ -1413,14 +1413,14 @@ function renderNode(task) {
   const toggle = document.createElement('div');
   toggle.className = 'task-toggle' + (task.collapsed ? ' collapsed' : '');
   toggle.innerHTML = hasChildren ? (task.collapsed ? '▶' : '▼') : '&nbsp;';
-  if (hasChildren) toggle.onclick = () => toggleCollapse(task.id);
+  if (hasChildren) toggle.onclick = (e) => { e.stopPropagation(); toggleCollapse(task.id); };
   row.appendChild(toggle);
 
   // Check
   const check = document.createElement('div');
   check.className = 'task-check ' + checkState;
   check.innerHTML = '<span class="check-icon">' + (checkState === 'partial' ? '−' : '✓') + '</span>';
-  check.onclick = () => toggleDone(task.id);
+  check.onclick = (e) => { e.stopPropagation(); toggleDone(task.id); };
   row.appendChild(check);
 
   // Label
