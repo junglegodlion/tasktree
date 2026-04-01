@@ -1035,9 +1035,8 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
     <h3>⏰ 时间到！</h3>
     <p class="timer-task-name" id="timer-expired-task-name">任务已完成计时时长</p>
     <div class="timer-expired-actions">
-      <button class="btn-close-modal" onclick="closeTimerExpiredModal()">稍后处理</button>
+      <button class="btn-confirm" onclick="confirmTimerExpired()">点击完成</button>
       <button class="btn-delay" onclick="delayTimer5Min()">+5分钟</button>
-      <button class="btn-confirm" onclick="confirmTimerExpired()">我知道了</button>
     </div>
     <div class="overtime-warning">
       <span>⚠️</span>
@@ -2168,11 +2167,18 @@ function confirmTimerExpired() {
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (task) {
     task.actualSeconds = task.timerUsed;
+    task.done = true;
   }
+  clearInterval(timerState.interval);
+  timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
+  document.getElementById('timer-panel').classList.remove('visible');
   closeTimerExpiredModal();
   const flash = document.getElementById('alert-flash');
   flash.classList.remove('active');
   stopTitleFlash();
+  saveDB();
+  renderTaskList();
+  updateProgress();
 }
 
 async function delayTimer5Min() {
