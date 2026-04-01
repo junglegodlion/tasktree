@@ -1468,16 +1468,10 @@ async function toggleDone(taskId) {
     }
   }
   
-  // If marking done, clear overtime flag
-  if (task.done && task.isOvertime) {
-    task.isOvertime = false;
-  }
-  
   // If marking done, also mark all children done
   const markChildren = (pid, done) => {
     childrenOf(pid).forEach(c => { 
       c.done = done;
-      if (done && c.isOvertime) c.isOvertime = false;
       markChildren(c.id, done); 
     });
   };
@@ -1604,11 +1598,11 @@ function renderNode(task) {
   label.appendChild(labelContent);
   
   // Overtime tag
-  if (!task.done && task.isOvertime) {
+  if (task.isOvertime) {
     const overtimeTag = document.createElement('span');
     overtimeTag.className = 'overtime-tag';
-    overtimeTag.textContent = '⚠️超时';
-    overtimeTag.style.cssText = 'font-size: 10px; padding: 1px 6px; background: rgba(245,158,11,0.15); color: var(--amber); border-radius: 4px; margin-left: 8px;';
+    overtimeTag.textContent = task.done ? '✓曾超时' : '⚠️超时';
+    overtimeTag.style.cssText = 'font-size: 10px; padding: 1px 6px; background: ' + (task.done ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)') + '; color: ' + (task.done ? 'var(--emerald)' : 'var(--amber)') + '; border-radius: 4px; margin-left: 8px;';
     label.appendChild(overtimeTag);
   }
   
@@ -1989,7 +1983,7 @@ function updateProgress() {
   const todayTasks = tasksForDate(todayKey());
   const completedTasks = todayTasks.filter(t => t.done).length;
   const totalTasks = todayTasks.filter(t => !t.done).length;
-  const overtimeTasks = todayTasks.filter(t => !t.done && t.isOvertime).length;
+  const overtimeTasks = todayTasks.filter(t => t.isOvertime).length;
   const total = totalTasks + completedTasks;
   const percent = total > 0 ? Math.round((completedTasks / total) * 100) : 0;
   
