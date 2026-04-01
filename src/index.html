@@ -1662,6 +1662,7 @@ function timerTick() {
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (task) {
     task.timerUsed = task.timerSeconds - timerState.remaining;
+    task.actualSeconds = task.timerUsed;
     if (timerState.remaining % 5 === 0) saveDB();
   }
 
