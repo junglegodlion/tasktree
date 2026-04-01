@@ -1136,8 +1136,9 @@ function currentUser() { return DB.users.find(u => u.id === DB.currentUser); }
 // ══════════════════════════════════════════════════════════════
 function setView(view) {
   currentView = view;
-  // Map view to offset logic
   if (view === 'today') currentDateOffset = 0;
+  else if (view === 'past') currentDateOffset = -1;
+  else if (view === 'future') currentDateOffset = 1;
   ['past','today','future'].forEach(v => {
     document.getElementById('btn-'+v).classList.toggle('active', v === view);
   });
@@ -1188,11 +1189,22 @@ function updateBadges() {
 //  TASKS
 // ══════════════════════════════════════════════════════════════
 function tasksForDate(dateISO) {
-  return DB.tasks.filter(t => t.userId === DB.currentUser && t.date === dateISO);
+  const userId = DB.currentUser;
+  if (currentView === 'today') {
+    return DB.tasks.filter(t => t.userId === userId && t.date === dateISO);
+  } else if (currentView === 'past') {
+    const today = todayKey();
+    return DB.tasks.filter(t => t.userId === userId && t.date < today);
+  } else if (currentView === 'future') {
+    const today = todayKey();
+    return DB.tasks.filter(t => t.userId === userId && t.date > today);
+  }
+  return DB.tasks.filter(t => t.userId === userId && t.date === dateISO);
 }
 
 function rootTasksForDate(dateISO) {
-  return tasksForDate(dateISO).filter(t => !t.parentId).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+  const tasks = tasksForDate(dateISO);
+  return tasks.filter(t => !t.parentId).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 function childrenOf(parentId) {
