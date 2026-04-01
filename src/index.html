@@ -1400,27 +1400,19 @@ function renderNode(task) {
   // Row
   const row = document.createElement('div');
   row.className = 'task-row';
-  const estimated = task.estimatedSeconds || task.timerSeconds || 5 * 60;
-  const actual = task.actualSeconds || task.timerUsed || 0;
-  
-  const showTimeDetails = () => {
-    alert(`预估时间: ${fmtTime(estimated)}\n实际花费: ${fmtTime(actual)}`);
-  };
-  row.onclick = showTimeDetails;
-  row.style.cursor = 'pointer';
 
   // Toggle
   const toggle = document.createElement('div');
   toggle.className = 'task-toggle' + (task.collapsed ? ' collapsed' : '');
   toggle.innerHTML = hasChildren ? (task.collapsed ? '▶' : '▼') : '&nbsp;';
-  if (hasChildren) toggle.onclick = (e) => { e.stopPropagation(); toggleCollapse(task.id); };
+  if (hasChildren) toggle.onclick = () => toggleCollapse(task.id);
   row.appendChild(toggle);
 
   // Check
   const check = document.createElement('div');
   check.className = 'task-check ' + checkState;
   check.innerHTML = '<span class="check-icon">' + (checkState === 'partial' ? '−' : '✓') + '</span>';
-  check.onclick = (e) => { e.stopPropagation(); toggleDone(task.id); };
+  check.onclick = () => toggleDone(task.id);
   row.appendChild(check);
 
   // Label
@@ -1457,8 +1449,7 @@ function renderNode(task) {
     td.textContent = task.done ? '完成' : fmtTime(displayRemaining);
     td.style.cursor = 'pointer';
     td.title = task.done ? '任务已完成' : (isThisTask ? '点击暂停' : '点击恢复计时');
-    td.onclick = (e) => {
-      e.stopPropagation();
+    td.onclick = () => {
       if (task.done) return;
       if (isThisTask && isRunning) togglePause();
       else startTimer(task.id);
