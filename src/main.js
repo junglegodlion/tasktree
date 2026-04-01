@@ -71,3 +71,15 @@ ipcMain.handle('window:maximize', () => {
   else mainWindow?.maximize();
 });
 ipcMain.handle('window:close', () => mainWindow?.close());
+ipcMain.handle('window:flashFrame', () => {
+  if (mainWindow) {
+    mainWindow.flashFrame(true);
+    setTimeout(() => mainWindow.flashFrame(false), 3000);
+  }
+});
+ipcMain.handle('window:focus', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});

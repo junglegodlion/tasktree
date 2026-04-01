@@ -1960,6 +1960,14 @@ function onTimerExpired() {
   // 3. System notification
   api.notify({ title: '⏰ 时间到！', body: `任务「${task?.text || ''}」计时结束` });
 
+  // 4. Flash window frame (taskbar icon)
+  api.flashFrame();
+
+  // 5. Bring window to front and focus
+  setTimeout(() => {
+    api.focusWindow();
+  }, 500);
+
   updateTimerPanel();
 }
 

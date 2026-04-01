@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld('api', {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
+  flashFrame: () => ipcRenderer.invoke('window:flashFrame'),
+  focusWindow: () => ipcRenderer.invoke('window:focus'),
 });
