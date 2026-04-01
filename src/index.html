@@ -1435,6 +1435,7 @@ function renderNode(task) {
     label.appendChild(overtimeTag);
   }
   
+  label.title = '双击修改任务名称';
   label.ondblclick = () => startEditLabel(label, task.id);
   row.appendChild(label);
 
