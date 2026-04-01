@@ -83,3 +83,14 @@ ipcMain.handle('window:focus', () => {
     mainWindow.focus();
   }
 });
+
+ipcMain.handle('playSound', (_, type) => {
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    if (type === 'alarm') {
+      exec('powershell -command "[console]::beep(800,300); [console]::beep(800,300); [console]::beep(800,300)"', (err) => {});
+    } else {
+      exec('powershell -command "[console]::beep(1000,200)"', (err) => {});
+    }
+  }
+});

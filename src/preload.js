@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('api', {
   close: () => ipcRenderer.invoke('window:close'),
   flashFrame: () => ipcRenderer.invoke('window:flashFrame'),
   focusWindow: () => ipcRenderer.invoke('window:focus'),
+  playSound: (type) => ipcRenderer.invoke('playSound', type),
 });

@@ -754,7 +754,9 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
 }
 @keyframes breatheGreen {
   0%   { box-shadow: inset 0 0 0 rgba(16,185,129,0); background: rgba(16,185,129,0); }
-  50%  { box-shadow: inset 0 0 80px rgba(16,185,129,0.3); background: rgba(16,185,129,0.08); }
+  25%  { box-shadow: inset 0 0 100px rgba(16,185,129,0.5); background: rgba(16,185,129,0.15); }
+  50%  { box-shadow: inset 0 0 0 rgba(16,185,129,0); background: rgba(16,185,129,0); }
+  75%  { box-shadow: inset 0 0 100px rgba(239,68,68,0.5); background: rgba(239,68,68,0.15); }
   100% { box-shadow: inset 0 0 0 rgba(16,185,129,0); background: rgba(16,185,129,0); }
 }
 @keyframes nodeIn {
@@ -2138,12 +2140,12 @@ function onTimerExpired() {
   const flash = document.getElementById('alert-flash');
   flash.classList.add('active');
 
-  // 2. Title flash
+  // 2. Title flash - faster to be more noticeable
   let alt = true;
   titleFlash = setInterval(() => {
-    api.setTitle(alt ? '【⏰ 时间到！】TaskTree' : 'TaskTree');
+    api.setTitle(alt ? '⏰ 时间到！TaskTree' : 'TaskTree');
     alt = !alt;
-  }, 600);
+  }, 400);
 
   // 3. System notification
   api.notify({ title: '⏰ 时间到！', body: `任务「${task?.text || ''}」计时结束` });
@@ -2151,7 +2153,10 @@ function onTimerExpired() {
   // 4. Flash window frame (taskbar icon)
   api.flashFrame();
 
-  // 5. Bring window to front and focus
+  // 5. Play alarm sound
+  api.playSound('alarm');
+
+  // 6. Bring window to front and focus
   setTimeout(() => {
     api.focusWindow();
   }, 500);
