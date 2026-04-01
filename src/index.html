@@ -1716,13 +1716,17 @@ function stopTimer() {
 }
 
 function adjustTimer(deltaMins) {
+  if (!timerState.taskId) return;
   const newSeconds = deltaMins * 60;
-  timerState.remaining += newSeconds;
   const task = DB.tasks.find(t => t.id === timerState.taskId);
   if (task) {
     task.timerSeconds += newSeconds;
     if (task.timerSeconds < 60) task.timerSeconds = 60;
     if (task.timerSeconds - task.timerUsed < 0) task.timerUsed = 0;
+    
+    timerState.timerSeconds = task.timerSeconds;
+    timerState.remaining = Math.max(timerState.remaining + newSeconds, 0);
+    
     if (timerState.running) {
       timerState.startTime = Date.now() - ((task.timerSeconds - timerState.remaining) * 1000);
     }
