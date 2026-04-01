@@ -1402,7 +1402,12 @@ function renderNode(task) {
   row.className = 'task-row';
   const estimated = task.estimatedSeconds || task.timerSeconds || 5 * 60;
   const actual = task.actualSeconds || task.timerUsed || 0;
-  row.title = `预估时间: ${fmtTime(estimated)} | 实际花费: ${fmtTime(actual)}`;
+  
+  const showTimeDetails = () => {
+    alert(`预估时间: ${fmtTime(estimated)}\n实际花费: ${fmtTime(actual)}`);
+  };
+  row.onclick = showTimeDetails;
+  row.style.cursor = 'pointer';
 
   // Toggle
   const toggle = document.createElement('div');
