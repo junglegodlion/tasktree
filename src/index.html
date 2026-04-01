@@ -705,6 +705,19 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   to   { opacity: 1; transform: translateX(0); }
 }
 .task-node { animation: nodeIn 0.18s ease; }
+
+/* ── Drag & Drop ─────────────────────────────────────── */
+.task-row[draggable="true"] { cursor: grab; }
+.task-row[draggable="true"]:active { cursor: grabbing; }
+.task-row.dragging { opacity: 0.5; }
+.task-row.drag-over { 
+  background: rgba(99,102,241,0.1); 
+  outline: 2px dashed var(--indigo);
+  outline-offset: -2px;
+}
+html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15); }
+.task-row.drop-allowed { background: rgba(16,185,129,0.1); }
+.task-row.drop-forbidden { background: rgba(239,68,68,0.1); }
 </style>
 </head>
 <body>
@@ -993,6 +1006,73 @@ let inlineAddParentId = null;
 let currentTheme = 'light';
 let sidebarCollapsed = false;
 let expandedNoteId = null;
+let draggedTaskId = null;
+
+// Drag & Drop
+const getAllTaskIds = () => DB.tasks.map(t => t.id);
+const isAncestor = (ancestorId, childId) => {
+  if (ancestorId === childId) return true;
+  const child = DB.tasks.find(t => t.id === childId);
+  if (!child || !child.parentId) return false;
+  return isAncestor(ancestorId, child.parentId);
+};
+
+function handleDragStart(e, taskId) {
+  draggedTaskId = taskId;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', taskId);
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.task-row.drag-over, .task-row.drop-allowed, .task-row.drop-forbidden').forEach(el => {
+    el.classList.remove('drag-over', 'drop-allowed', 'drop-forbidden');
+  });
+  draggedTaskId = null;
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const targetRow = e.target.closest('.task-row');
+  if (!targetRow || !draggedTaskId) return;
+  const targetId = targetRow.closest('.task-node')?.dataset.id;
+  if (!targetId || targetId === draggedTaskId) return;
+  if (isAncestor(draggedTaskId, targetId)) {
+    targetRow.classList.remove('drag-over');
+    targetRow.classList.add('drop-forbidden');
+    return;
+  }
+  targetRow.classList.remove('drop-forbidden');
+  targetRow.classList.add('drag-over', 'drop-allowed');
+}
+
+function handleDragLeave(e) {
+  const targetRow = e.target.closest('.task-row');
+  if (targetRow) {
+    targetRow.classList.remove('drag-over', 'drop-allowed', 'drop-forbidden');
+  }
+}
+
+function handleDrop(e, targetTaskId) {
+  e.preventDefault();
+  const targetRow = e.target.closest('.task-row');
+  if (targetRow) targetRow.classList.remove('drag-over', 'drop-allowed', 'drop-forbidden');
+  
+  if (!draggedTaskId || !targetTaskId || draggedTaskId === targetTaskId) return;
+  if (isAncestor(draggedTaskId, targetTaskId)) return;
+  
+  reparentTask(draggedTaskId, targetTaskId);
+}
+
+async function reparentTask(taskId, newParentId) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const oldParentId = task.parentId;
+  task.parentId = newParentId;
+  await saveDB();
+  renderTaskList();
+}
 
 // ══════════════════════════════════════════════════════════════
 //  UTILS
@@ -1248,6 +1328,7 @@ async function commitInlineChild(parentId, text) {
   const value = (text || '').trim();
   if (!value) return;
   await addTask(value, parentId);
+  beginAddChild(parentId);
 }
 
 function cancelInlineChild() {
@@ -1497,6 +1578,15 @@ function renderNode(task) {
   actions.appendChild(delBtn);
 
   row.appendChild(actions);
+
+  // Drag events
+  row.draggable = true;
+  row.addEventListener('dragstart', e => handleDragStart(e, task.id));
+  row.addEventListener('dragend', handleDragEnd);
+  row.addEventListener('dragover', handleDragOver);
+  row.addEventListener('dragleave', handleDragLeave);
+  row.addEventListener('drop', e => handleDrop(e, task.id));
+
   node.appendChild(row);
 
   // Note panel
