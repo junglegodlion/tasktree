@@ -407,6 +407,9 @@ html[data-theme="dark"] .task-hint .pill {
 }
 .task-row:hover { background: rgba(15,23,42,0.04); }
 html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
+.task-row.abandoned { opacity: 0.5; }
+.task-row.abandoned .task-label { text-decoration: line-through; color: var(--text3); }
+html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); }
 .task-actions {
   display: none; align-items: center; gap: 4px;
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
@@ -444,6 +447,8 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
   cursor: text;
 }
 .task-label.done { text-decoration: line-through; color: var(--text3); }
+.task-label.abandoned { color: var(--text3); }
+.task-label.abandoned .abandoned-icon { margin-right: 6px; }
 .task-label[contenteditable="true"] {
   outline: none; white-space: normal; overflow: visible;
   background: transparent;
@@ -468,6 +473,9 @@ html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
 .action-btn.run:hover { background: rgba(16,185,129,0.15); color: var(--emerald2); }
 .action-btn.running { color: var(--amber); animation: pulse 1.5s infinite; }
 .action-btn.note:hover { background: rgba(245,158,11,0.15); color: var(--amber); }
+.action-btn.abandon:hover { background: rgba(239,68,68,0.15); color: var(--red); }
+.action-btn.abandon.abandoned { color: var(--emerald); }
+.action-btn.abandon.abandoned:hover { background: rgba(16,185,129,0.15); }
 
 /* Note Panel */
 .task-note-panel {
@@ -914,6 +922,10 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
             <div class="progress-stat">
               <span class="stat-label">超时</span>
               <span class="stat-value" id="stat-overtime" style="color: var(--amber)">0</span>
+            </div>
+            <div class="progress-stat">
+              <span class="stat-label">放弃</span>
+              <span class="stat-value" id="stat-abandoned" style="color: var(--red)">0</span>
             </div>
             <div class="progress-stat">
               <span class="stat-label">总任务</span>
@@ -1444,7 +1456,7 @@ function updateDateDisplay() {
 function updateBadges() {
   const uid = DB.currentUser;
   const today = todayKey();
-  const myTasks = DB.tasks.filter(t => t.userId === uid && !t.parentId);
+  const myTasks = DB.tasks.filter(t => t.userId === uid);
   const past   = myTasks.filter(t => t.date < today).length;
   const todayC = myTasks.filter(t => t.date === today).length;
   const future = myTasks.filter(t => t.date > today).length;
@@ -1459,16 +1471,7 @@ function updateBadges() {
 // ══════════════════════════════════════════════════════════════
 function tasksForDate(dateISO) {
   const userId = DB.currentUser;
-  if (currentView === 'today') {
-    return DB.tasks.filter(t => t.userId === userId && t.date === dateISO);
-  } else if (currentView === 'past') {
-    const today = todayKey();
-    return DB.tasks.filter(t => t.userId === userId && t.date < today);
-  } else if (currentView === 'future') {
-    const today = todayKey();
-    return DB.tasks.filter(t => t.userId === userId && t.date > today);
-  }
-  return DB.tasks.filter(t => t.userId === userId && t.date === dateISO);
+  return DB.tasks.filter(t => t.userId === userId && t.date === dateISO && !t.abandoned);
 }
 
 function rootTasksForDate(dateISO) {
@@ -1489,7 +1492,7 @@ async function addTask(text, parentId = null) {
     text, done: false, collapsed: false,
     timerSeconds: 5 * 60, timerUsed: 0, 
     estimatedSeconds: 5 * 60, actualSeconds: 0,
-    note: '', isOvertime: false,
+    note: '', isOvertime: false, abandoned: false,
     createdAt: new Date().toISOString(),
     order: maxOrder + 1
   };
@@ -1567,6 +1570,49 @@ async function toggleDone(taskId) {
   };
   markChildren(taskId, task.done);
   await propagateParentStatus(task.parentId);
+  await saveDB();
+  renderTaskList();
+  updateProgress();
+}
+
+async function toggleAbandoned(taskId) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.abandoned = !task.abandoned;
+  if (task.abandoned) {
+    task.abandonedAt = new Date().toISOString();
+  } else {
+    delete task.abandonedAt;
+  }
+  
+  // If abandoning, also stop timer if running on this task or its children
+  if (task.abandoned && timerState.taskId) {
+    const isThisTask = timerState.taskId === taskId;
+    const collectChildrenIds = (pid) => {
+      const ids = [];
+      childrenOf(pid).forEach(c => { ids.push(c.id); ids.push(...collectChildrenIds(c.id)); });
+      return ids;
+    };
+    const childIds = collectChildrenIds(taskId);
+    if (isThisTask || childIds.includes(timerState.taskId)) {
+      stopTimer();
+    }
+  }
+  
+  // If abandoning, also mark all children abandoned
+  // If restoring, also restore all children
+  const markChildrenAbandoned = (pid, abandoned) => {
+    childrenOf(pid).forEach(c => { 
+      c.abandoned = abandoned;
+      if (abandoned) {
+        c.abandonedAt = new Date().toISOString();
+      } else {
+        delete c.abandonedAt;
+      }
+      markChildrenAbandoned(c.id, abandoned); 
+    });
+  };
+  markChildrenAbandoned(taskId, task.abandoned);
   await saveDB();
   renderTaskList();
   updateProgress();
@@ -1662,7 +1708,7 @@ function renderNode(task) {
 
   // Row
   const row = document.createElement('div');
-  row.className = 'task-row';
+  row.className = 'task-row' + (task.abandoned ? ' abandoned' : '');
 
   // Toggle
   const toggle = document.createElement('div');
@@ -1675,17 +1721,27 @@ function renderNode(task) {
   const check = document.createElement('div');
   check.className = 'task-check ' + checkState;
   check.innerHTML = '<span class="check-icon">' + (checkState === 'partial' ? '−' : '✓') + '</span>';
-  check.onclick = () => toggleDone(task.id);
+  if (!task.abandoned) check.onclick = () => toggleDone(task.id);
+  else check.style.cursor = 'default';
   row.appendChild(check);
 
   // Label
   const label = document.createElement('div');
-  label.className = 'task-label' + (task.done ? ' done' : '');
+  label.className = 'task-label' + (task.done ? ' done' : '') + (task.abandoned ? ' abandoned' : '');
   
   const labelContent = document.createElement('span');
   labelContent.textContent = task.text;
   labelContent.title = '双击修改任务名称';
   label.appendChild(labelContent);
+  
+  // Abandoned tag
+  if (task.abandoned) {
+    const abandonedTag = document.createElement('span');
+    abandonedTag.className = 'abandoned-tag';
+    abandonedTag.innerHTML = '<span class="abandoned-icon">✕</span>已放弃';
+    abandonedTag.style.cssText = 'font-size: 10px; padding: 1px 6px; background: rgba(239,68,68,0.15); color: var(--red); border-radius: 4px; margin-left: 8px;';
+    label.appendChild(abandonedTag);
+  }
   
   // Overtime tag
   if (task.isOvertime) {
@@ -1697,13 +1753,15 @@ function renderNode(task) {
   }
   
   label.title = '';
-  label.ondblclick = () => startEditLabel(label, task.id);
+  if (!task.abandoned) {
+    label.ondblclick = () => startEditLabel(label, task.id);
+  }
   row.appendChild(label);
 
   // Timer display - always show remaining time for tasks with timerSeconds set
   const taskRemaining = task.timerSeconds - task.timerUsed;
   const isThisTask = timerState.taskId === task.id;
-  const showTimerDisplay = task.timerSeconds > 0;
+  const showTimerDisplay = task.timerSeconds > 0 && !task.abandoned;
   
   if (showTimerDisplay) {
     const displayRemaining = isThisTask ? timerState.remaining : (task.done ? 0 : taskRemaining);
@@ -1727,20 +1785,25 @@ function renderNode(task) {
   // Start/pause timer btn
   const timerBtn = document.createElement('button');
   timerBtn.className = 'action-btn ' + (isRunning ? 'running' : 'run');
-  timerBtn.title = isRunning ? '暂停计时' : '开始计时';
+  timerBtn.title = task.abandoned ? '无法为已放弃的任务计时' : (isRunning ? '暂停计时' : '开始计时');
   timerBtn.textContent = isRunning ? '⏸' : '▶';
-  timerBtn.onclick = () => {
-    if (timerState.taskId === task.id) togglePause();
-    else startTimer(task.id);
-  };
+  if (!task.abandoned) {
+    timerBtn.onclick = () => {
+      if (timerState.taskId === task.id) togglePause();
+      else startTimer(task.id);
+    };
+  } else {
+    timerBtn.style.opacity = '0.3';
+  }
   actions.appendChild(timerBtn);
 
   // Add child btn
   const addBtn = document.createElement('button');
   addBtn.className = 'action-btn';
-  addBtn.title = '添加子任务';
+  addBtn.title = task.abandoned ? '无法为已放弃的任务添加子任务' : '添加子任务';
   addBtn.textContent = '＋';
-  addBtn.onclick = () => beginAddChild(task.id);
+  if (!task.abandoned) addBtn.onclick = () => beginAddChild(task.id);
+  else addBtn.style.opacity = '0.3';
   actions.appendChild(addBtn);
 
   // Note btn
@@ -1759,11 +1822,19 @@ function renderNode(task) {
   detailBtn.onclick = () => showTaskDetail(task.id);
   actions.appendChild(detailBtn);
 
+  // Abandon btn
+  const abandonBtn = document.createElement('button');
+  abandonBtn.className = 'action-btn abandon' + (task.abandoned ? ' abandoned' : '');
+  abandonBtn.title = task.abandoned ? '恢复任务' : '放弃任务';
+  abandonBtn.textContent = task.abandoned ? '↺' : '⚐';
+  abandonBtn.onclick = () => toggleAbandoned(task.id);
+  actions.appendChild(abandonBtn);
+
   // Delete btn
   const delBtn = document.createElement('button');
   delBtn.className = 'action-btn del';
   delBtn.title = '删除任务';
-  delBtn.textContent = '✕';
+  delBtn.textContent = '🗑';
   delBtn.onclick = () => deleteTask(task.id);
   actions.appendChild(delBtn);
 
@@ -2078,10 +2149,19 @@ function handleTimerInputKeypress(event) {
 }
 
 function updateProgress() {
-  const todayTasks = tasksForDate(todayKey());
-  const completedTasks = todayTasks.filter(t => t.done).length;
-  const totalTasks = todayTasks.filter(t => !t.done).length;
-  const overtimeTasks = todayTasks.filter(t => t.isOvertime).length;
+  const key = todayKey();
+  const userId = DB.currentUser || (DB.users[0] && DB.users[0].id);
+  
+  // Get today's tasks for current user
+  const userTodayTasks = DB.tasks.filter(t => t.userId === userId && t.date === key);
+  const activeTasks = userTodayTasks.filter(t => !t.abandoned);
+  
+  const completedTasks = activeTasks.filter(t => t.done).length;
+  const totalTasks = activeTasks.filter(t => !t.done).length;
+  const overtimeTasks = activeTasks.filter(t => t.isOvertime).length;
+  const abandonedTasks = DB.tasks.filter(t => t.userId === userId && t.abandoned && 
+    t.abandonedAt && t.abandonedAt.startsWith(key)).length;
+  
   const total = totalTasks + completedTasks;
   const percent = total > 0 ? Math.round((completedTasks / total) * 100) : 0;
   
@@ -2089,6 +2169,7 @@ function updateProgress() {
   document.getElementById('stat-completed').textContent = completedTasks;
   document.getElementById('stat-active').textContent = totalTasks;
   document.getElementById('stat-overtime').textContent = overtimeTasks;
+  document.getElementById('stat-abandoned').textContent = abandonedTasks;
   document.getElementById('stat-total').textContent = total;
   
   const ringFill = document.getElementById('progress-ring-fill');
