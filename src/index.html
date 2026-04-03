@@ -684,6 +684,21 @@ html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); 
   color: var(--amber);
   border-color: rgba(245,158,11,0.3);
 }
+.btn-abandon-timer {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-abandon-timer:hover {
+  background: rgba(239,68,68,0.15);
+  color: var(--red);
+  border-color: rgba(239,68,68,0.3);
+}
 .overtime-warning {
   font-size: 12px;
   color: var(--amber);
@@ -1052,6 +1067,7 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
     <div class="timer-expired-actions">
       <button class="btn-confirm" onclick="confirmTimerExpired()">点击完成</button>
       <button class="btn-delay" onclick="delayTimer5Min()">+5分钟</button>
+      <button class="btn-abandon-timer" onclick="abandonTimerTask()">放弃</button>
     </div>
     <div class="overtime-warning">
       <span>⚠️</span>
@@ -2257,6 +2273,24 @@ function onTimerExpired() {
 
 function closeTimerExpiredModal() {
   document.getElementById('timer-expired-modal').style.display = 'none';
+}
+
+function abandonTimerTask() {
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (task) {
+    task.abandoned = true;
+    task.abandonedAt = new Date().toISOString();
+  }
+  clearInterval(timerState.interval);
+  timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
+  document.getElementById('timer-panel').classList.remove('visible');
+  closeTimerExpiredModal();
+  const flash = document.getElementById('alert-flash');
+  flash.classList.remove('active');
+  stopTitleFlash();
+  saveDB();
+  renderTaskList();
+  updateProgress();
 }
 
 function confirmTimerExpired() {

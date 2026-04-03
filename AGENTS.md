@@ -115,6 +115,14 @@ function loadData() {
 - 数据保存在: `{userData}/tasktree-data/data.json`
 - JSON 格式包含 `users`、`tasks`、`inviteCodes`、`currentUser` 字段
 
+## 数据联动
+
+左侧今日进度面板、任务面板和倒计时完成弹窗中的数据通过 `updateProgress()`、`renderTaskList()` 和 `saveDB()` 形成实时联动：
+
+- 任务状态变化（完成/放弃/超时）时需同时调用这三个函数
+- 放弃任务需要设置 `task.abandonedAt` 时间戳，以便正确统计当日放弃数量
+- 倒计时弹窗操作完成后也要触发数据刷新，确保统计数据准确
+
 ## 关键文件参考
 
 | 文件 | 用途 |
