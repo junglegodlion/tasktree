@@ -264,13 +264,25 @@ const Timer = {
     Sidebar.updateProgress();
   },
 
-  async delay5Min() {
+  async delay5MinWithReason() {
     const task = State.DB.tasks.find(t => t.id === State.timerState.taskId);
     if (!task) return;
+    
+    const reasonInput = document.getElementById('delay-reason-input');
+    const reason = reasonInput.value.trim();
     
     task.actualSeconds = task.timerUsed;
     if (!task.isOvertime) {
       task.isOvertime = true;
+    }
+    
+    if (reason) {
+      if (!task.delayHistory) task.delayHistory = [];
+      task.delayHistory.push({
+        delayMinutes: 5,
+        reason: reason,
+        delayedAt: new Date().toISOString()
+      });
     }
     
     const addSeconds = 5 * 60;
@@ -293,7 +305,7 @@ const Timer = {
     flash.classList.remove('active');
     Timer.stopTitleFlash();
     
-    api.notify({ title: '⏱ 延时5分钟', body: `任务「${task.text}」已延长5分钟，已标记为超时` });
+    api.notify({ title: '⏱ 延时5分钟', body: `任务「${task.text}」已延长5分钟${reason ? '，原因：' + reason : ''}` });
   },
 
   async completeFromTimer() {

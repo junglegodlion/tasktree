@@ -90,8 +90,10 @@ const Init = {
     document.getElementById('btn-set-timer').onclick = () => Modals.openSetTimerFromDetail();
     
     document.getElementById('btn-timer-confirm').onclick = () => Timer.confirmExpired();
-    document.getElementById('btn-timer-delay').onclick = () => Timer.delay5Min();
+    document.getElementById('btn-timer-delay').onclick = () => Modals.showDelayReasonInput();
     document.getElementById('btn-timer-abandon').onclick = () => Timer.abandonTask();
+    document.getElementById('btn-confirm-delay').onclick = () => Timer.delay5MinWithReason();
+    document.getElementById('btn-cancel-delay').onclick = () => Modals.hideDelayReasonInput();
   },
 
   loadTheme() {

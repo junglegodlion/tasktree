@@ -15,11 +15,31 @@ const Modals = {
 
   showTimerExpired(taskName) {
     document.getElementById('timer-expired-task-name').textContent = `任务「${taskName}」已完成计时时长`;
+    document.querySelector('.timer-expired-actions').style.display = 'flex';
+    document.querySelector('.overtime-warning').style.display = 'flex';
+    document.getElementById('delay-reason-container').style.display = 'none';
+    document.getElementById('delay-reason-input').value = '';
     document.getElementById('timer-expired-modal').style.display = 'flex';
   },
 
   closeTimerExpired() {
     document.getElementById('timer-expired-modal').style.display = 'none';
+    document.getElementById('delay-reason-container').style.display = 'none';
+    document.getElementById('delay-reason-input').value = '';
+  },
+
+  showDelayReasonInput() {
+    document.querySelector('.timer-expired-actions').style.display = 'none';
+    document.querySelector('.overtime-warning').style.display = 'none';
+    document.getElementById('delay-reason-container').style.display = 'flex';
+    document.getElementById('delay-reason-input').focus();
+  },
+
+  hideDelayReasonInput() {
+    document.querySelector('.timer-expired-actions').style.display = 'flex';
+    document.querySelector('.overtime-warning').style.display = 'flex';
+    document.getElementById('delay-reason-container').style.display = 'none';
+    document.getElementById('delay-reason-input').value = '';
   },
 
   showTaskDetail(taskId) {
@@ -30,7 +50,7 @@ const Modals = {
     document.getElementById('task-detail-title').textContent = task.text;
     document.getElementById('detail-note').textContent = task.note || '无备注';
 
-    Modals.updateTaskDetailDisplay();
+    Modals.renderDelayHistory(task);
 
     State.detailUpdateInterval = setInterval(() => {
       if (document.getElementById('task-detail-modal').style.display !== 'none') {
@@ -87,6 +107,35 @@ const Modals = {
     Modals.closeTaskDetail();
     Timer.start(State.currentDetailTaskId);
     Timer.showTimeInput();
+  },
+
+  renderDelayHistory(task) {
+    const section = document.getElementById('delay-history-section');
+    const list = document.getElementById('delay-history-list');
+    
+    if (!task.delayHistory || task.delayHistory.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    section.style.display = 'block';
+    list.innerHTML = '';
+    
+    task.delayHistory.slice().reverse().forEach(delay => {
+      const div = document.createElement('div');
+      div.className = 'delay-history-item';
+      const time = new Date(delay.delayedAt).toLocaleString('zh-CN', { 
+        month: 'numeric', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      div.innerHTML = `
+        <div class="delay-time">+${delay.delayMinutes}分钟 · ${time}</div>
+        <div class="delay-reason">${delay.reason}</div>
+      `;
+      list.appendChild(div);
+    });
   },
 
   renderInviteList() {

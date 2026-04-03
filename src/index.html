@@ -708,6 +708,57 @@ html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); 
   justify-content: center;
   gap: 6px;
 }
+.delay-reason-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.delay-reason-input {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--bg1);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.delay-reason-input:focus {
+  border-color: var(--amber);
+}
+.delay-reason-input::placeholder {
+  color: var(--text3);
+}
+.btn-confirm-delay {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--amber);
+  color: #000;
+  border: none;
+  transition: all 0.15s;
+}
+.btn-confirm-delay:hover {
+  background: #f59e0b;
+}
+.btn-cancel-delay {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+  transition: all 0.15s;
+}
+.btn-cancel-delay:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
 
 /* ── Task Detail Modal ───────────────────────────────────── */
 .task-detail-modal {
@@ -753,6 +804,28 @@ html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); 
   color: var(--text2);
   min-height: 60px;
   white-space: pre-wrap;
+}
+.delay-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.delay-history-item {
+  background: var(--bg3);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--amber);
+}
+.delay-history-item .delay-time {
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+.delay-history-item .delay-reason {
+  font-size: 13px;
+  color: var(--text);
 }
 .btn-set-timer {
   padding: 8px 16px;
@@ -1069,6 +1142,11 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
       <button class="btn-delay" id="btn-timer-delay">+5分钟</button>
       <button class="btn-abandon-timer" id="btn-timer-abandon">放弃</button>
     </div>
+    <div class="delay-reason-container" id="delay-reason-container" style="display:none">
+      <input type="text" id="delay-reason-input" class="delay-reason-input" placeholder="请输入延时原因（选填，用于复盘）" maxlength="100">
+      <button class="btn-confirm-delay" id="btn-confirm-delay">确认延时</button>
+      <button class="btn-cancel-delay" id="btn-cancel-delay">取消</button>
+    </div>
     <div class="overtime-warning">
       <span>⚠️</span>
       <span>选择延迟5分钟将会标记此任务为超时</span>
@@ -1108,6 +1186,11 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
     <div class="task-detail-section">
       <h4>备注</h4>
       <div class="task-detail-note" id="detail-note">无备注</div>
+    </div>
+    
+    <div class="task-detail-section" id="delay-history-section" style="display:none">
+      <h4>延时记录</h4>
+      <div class="delay-history-list" id="delay-history-list"></div>
     </div>
     
     <div class="task-detail-section">
