@@ -65,7 +65,21 @@ ipcMain.handle('window:setTitle', (_, title) => {
   if (mainWindow) mainWindow.setTitle(title);
 });
 
-ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize();
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    exec('powershell -command "[console]::beep(400,100)"', (err) => {});
+  }
+});
+
+ipcMain.handle('window:restore', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
 ipcMain.handle('window:maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize();
   else mainWindow?.maximize();
@@ -87,10 +101,9 @@ ipcMain.handle('window:focus', () => {
 ipcMain.handle('playSound', (_, type) => {
   const { exec } = require('child_process');
   if (process.platform === 'win32') {
-    if (type === 'alarm') {
-      exec('powershell -command "[console]::beep(800,300); [console]::beep(800,300); [console]::beep(800,300)"', (err) => {});
-    } else {
-      exec('powershell -command "[console]::beep(1000,200)"', (err) => {});
-    }
+    const script = type === 'alarm'
+      ? 'Add-Type -AssemblyName System.Windows.Forms; [System.Media.SystemSounds]::Exclamation.Play(); Start-Sleep -Milliseconds 300; [System.Media.SystemSounds]::Exclamation.Play(); Start-Sleep -Milliseconds 300; [System.Media.SystemSounds]::Exclamation.Play()'
+      : 'Add-Type -AssemblyName System.Windows.Forms; [System.Media.SystemSounds]::Beep.Play()';
+    exec(`powershell -command "${script}"`, (err) => {});
   }
 });
