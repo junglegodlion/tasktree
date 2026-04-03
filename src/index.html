@@ -1735,6 +1735,9 @@ function renderNode(task) {
   // Row
   const row = document.createElement('div');
   row.className = 'task-row' + (task.abandoned ? ' abandoned' : '');
+  row.dataset.id = task.id;
+  row.addEventListener('mouseenter', () => row.dataset.hovered = '1');
+  row.addEventListener('mouseleave', () => row.dataset.hovered = '0');
 
   // Toggle
   const toggle = document.createElement('div');
@@ -2506,6 +2509,19 @@ document.getElementById('new-task-input').addEventListener('keydown', async e =>
   if (e.key === 'Enter') {
     const text = e.target.value.trim();
     if (text) { await addTask(text); e.target.value = ''; }
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) {
+    const hoveredRow = document.querySelector('.task-row[data-hovered="1"]');
+    if (hoveredRow && hoveredRow.dataset.id) {
+      const task = DB.tasks.find(t => t.id === hoveredRow.dataset.id);
+      if (task && !task.abandoned) {
+        e.preventDefault();
+        beginAddChild(task.id);
+      }
+    }
   }
 });
 
