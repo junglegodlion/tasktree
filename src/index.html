@@ -1003,6 +1003,7 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
           <button class="timer-step-btn" onclick="showTimeInput()">⏱</button>
           <button class="timer-pause-btn" id="timer-pause-btn" onclick="togglePause()">暂停</button>
           <button class="timer-stop-btn" onclick="stopTimer()">停止</button>
+          <button class="timer-stop-btn" onclick="completeTaskFromTimer()" style="background:var(--emerald);color:#fff;border-color:var(--emerald2)">完成</button>
         </div>
         <div class="timer-input" id="timer-input">
           <input type="number" id="timer-input-field" min="1" max="180" placeholder="分钟" onkeypress="handleTimerInputKeypress(event)">
@@ -1483,7 +1484,7 @@ function childrenOf(parentId) {
   return DB.tasks.filter(t => t.parentId === parentId).sort((a,b) => (a.order || 0) - (b.order || 0));
 }
 
-async function addTask(text, parentId = null) {
+async function addTask(text, parentId = null, shouldRender = true) {
   const date = dateKey(currentDateOffset);
   const siblings = parentId ? childrenOf(parentId) : rootTasksForDate(date);
   const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(t => t.order || 0)) : 0;
@@ -1499,7 +1500,7 @@ async function addTask(text, parentId = null) {
   DB.tasks.push(task);
   await saveDB();
   updateBadges();
-  renderTaskList();
+  if (shouldRender) renderTaskList();
   return task;
 }
 
@@ -1518,8 +1519,9 @@ function beginAddChild(parentId) {
 async function commitInlineChild(parentId, text) {
   const value = (text || '').trim();
   if (!value) return;
-  await addTask(value, parentId);
-  beginAddChild(parentId);
+  inlineAddParentId = parentId;
+  await addTask(value, parentId, false);
+  renderTaskList();
 }
 
 function cancelInlineChild() {
@@ -1692,6 +1694,14 @@ function renderTaskList() {
   container.innerHTML = '';
   roots.forEach(task => container.appendChild(renderNode(task)));
   updateProgress();
+  
+  // Auto-focus inline add input if exists
+  if (inlineAddParentId) {
+    setTimeout(() => {
+      const input = document.querySelector(`input[data-inline-child-for="${inlineAddParentId}"]`);
+      if (input) input.focus();
+    }, 0);
+  }
 }
 
 function renderNode(task) {
@@ -2304,6 +2314,24 @@ async function delayTimer5Min() {
   
   // Notify user
   api.notify({ title: '⏱ 延时5分钟', body: `任务「${task.text}」已延长5分钟，已标记为超时` });
+}
+
+async function completeTaskFromTimer() {
+  const task = DB.tasks.find(t => t.id === timerState.taskId);
+  if (task) {
+    task.actualSeconds = task.timerUsed;
+    task.done = true;
+  }
+  clearInterval(timerState.interval);
+  timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
+  document.getElementById('timer-panel').classList.remove('visible');
+  stopTitleFlash();
+  await saveDB();
+  renderTaskList();
+  updateProgress();
+  
+  // Notify user
+  api.notify({ title: '✓ 任务完成', body: `任务「${task?.text || ''}」已完成` });
 }
 
 function stopTitleFlash() {
