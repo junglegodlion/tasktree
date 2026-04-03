@@ -36,9 +36,24 @@ tasktree/
 ├── src/
 │   ├── main.js           # Electron 主进程
 │   ├── preload.js        # 安全 IPC 桥接
-│   ├── index.html        # 全部 UI + 业务逻辑（单页应用）
-│   └── flash.html        # 闪烁通知窗口
-├── build/                # 应用图标
+│   ├── index.html        # 主页面入口
+│   ├── bundle.js         # 渲染进程业务代码打包
+│   ├── icon.svg          # 应用图标源文件
+│   ├── flash.html        # 闪烁通知窗口
+│   └── modules/          # 渲染进程模块
+│       ├── init.js       # 初始化入口
+│       ├── api.js        # API 封装
+│       ├── auth.js       # 认证模块
+│       ├── dateView.js   # 日期视图
+│       ├── dragdrop.js   # 拖拽功能
+│       ├── modals.js     # 弹窗模块
+│       ├── render.js     # 渲染模块
+│       ├── sidebar.js    # 侧边栏
+│       ├── state.js      # 状态管理
+│       ├── tasks.js      # 任务模块
+│       ├── timer.js      # 计时器模块
+│       └── utils.js      # 工具函数
+├── build/                # 构建产物（图标）
 ├── scripts/              # 构建脚本
 └── README.md
 ```
@@ -117,10 +132,11 @@ function loadData() {
 
 ## 数据联动
 
-左侧今日进度面板、任务面板和倒计时完成弹窗中的数据通过 `updateProgress()`、`renderTaskList()` 和 `saveDB()` 形成实时联动：
+左侧今日进度面板、任务面板和倒计时完成弹窗中的数据通过 `Sidebar.updateProgress()`、`TaskRender.renderTaskList()` 和 `Api.saveDB()` 形成实时联动：
 
 - 任务状态变化（完成/放弃/超时）时需同时调用这三个函数
 - 放弃任务需要设置 `task.abandonedAt` 时间戳，以便正确统计当日放弃数量
+- 恢复任务时需删除 `task.abandonedAt` 字段
 - 倒计时弹窗操作完成后也要触发数据刷新，确保统计数据准确
 
 ## 关键文件参考
@@ -129,7 +145,9 @@ function loadData() {
 |------|------|
 | `src/main.js:1` | 主进程 - 窗口管理、IPC 处理器 |
 | `src/preload.js` | 安全 IPC 桥接，暴露安全 API |
-| `src/index.html` | 所有 UI 渲染和用户交互逻辑 |
+| `src/index.html` | 主页面入口，UI 结构 + 引用 bundle.js |
+| `src/bundle.js` | 渲染进程业务代码（由 modules/ 合并打包） |
+| `src/modules/` | 渲染进程模块目录 |
 
 ## 常见开发任务
 
@@ -141,7 +159,7 @@ function loadData() {
 
 ### 修改 UI
 
-编辑 `src/index.html` - 包含所有 HTML、CSS 和渲染进程 JavaScript。
+编辑 `src/index.html` - 包含所有 HTML 结构、CSS 样式和引用 bundle.js 入口。
 
 ### 发布构建
 
