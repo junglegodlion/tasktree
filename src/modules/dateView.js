@@ -13,6 +13,7 @@ const DateView = {
     });
     DateView.updateDateDisplay();
     TaskRender.renderTaskList();
+    Sidebar.updateBadges();
   },
 
   offsetDate(delta) {
@@ -26,17 +27,7 @@ const DateView = {
     });
     DateView.updateDateDisplay();
     TaskRender.renderTaskList();
-  },
-
-  updateDateDisplay() {
-    const key = Utils.dateKey(State.currentDateOffset);
-    let label;
-    if (State.currentDateOffset === 0) label = '今天';
-    else if (State.currentDateOffset === -1) label = '昨天';
-    else if (State.currentDateOffset === 1) label = '明天';
-    else label = Utils.formatDate(key);
-    document.getElementById('date-title').textContent = label;
-    document.getElementById('date-sub').textContent = Utils.formatDate(key);
+    Sidebar.updateBadges();
   }
 };
 

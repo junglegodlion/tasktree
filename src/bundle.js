@@ -284,6 +284,7 @@ const DateView = {
     });
     DateView.updateDateDisplay();
     TaskRender.renderTaskList();
+    Sidebar.updateBadges();
   },
 
   offsetDate(delta) {
@@ -297,6 +298,7 @@ const DateView = {
     });
     DateView.updateDateDisplay();
     TaskRender.renderTaskList();
+    Sidebar.updateBadges();
   },
 
   updateDateDisplay() {
