@@ -651,9 +651,27 @@ const Sidebar = {
     document.getElementById('stat-overtime').textContent = overtimeTasks;
     document.getElementById('stat-abandoned').textContent = abandonedTasks;
     document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-time').textContent = Sidebar.calcTodayTotalTime();
     
     const ringFill = document.getElementById('progress-ring-fill');
     ringFill.setAttribute('stroke-dasharray', percent + ', 100');
+  },
+
+  calcTodayTotalTime() {
+    const key = Utils.todayKey();
+    const userId = State.DB.currentUser || (State.DB.users[0] && State.DB.users[0].id);
+    if (!userId) return '0m';
+    
+    const userTodayTasks = State.DB.tasks.filter(t => t.userId === userId && t.date === key && !t.abandoned);
+    const totalSeconds = userTodayTasks.reduce((sum, t) => sum + (t.timerUsed || 0), 0);
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return hours + 'h ' + minutes + 'm';
+    }
+    return minutes + 'm';
   }
 };
 
