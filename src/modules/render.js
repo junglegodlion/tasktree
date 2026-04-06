@@ -86,9 +86,8 @@ const TaskRender = {
     
     if (task.isOvertime) {
       const overtimeTag = document.createElement('span');
-      overtimeTag.className = 'overtime-tag';
-      overtimeTag.textContent = task.done ? '✓曾超时' : '⚠️超时';
-      overtimeTag.style.cssText = 'font-size: 10px; padding: 1px 6px; background: ' + (task.done ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)') + '; color: ' + (task.done ? 'var(--emerald)' : 'var(--amber)') + '; border-radius: 4px; margin-left: 8px;';
+      overtimeTag.className = 'overtime-tag ' + (task.done ? 'past' : 'active');
+      overtimeTag.textContent = task.done ? '曾超时' : '超时';
       label.appendChild(overtimeTag);
     }
     

@@ -159,12 +159,13 @@ input, textarea { font-family: inherit; outline: none; }
 
 /* ── Sidebar ────────────────────────────────────────── */
 #sidebar {
-  width: 220px; min-width: 220px;
+  width: 200px; min-width: 200px;
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
-  padding: 16px 0;
+  padding: 12px 10px;
   overflow-y: auto;
+  overflow-x: hidden;
   transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease;
 }
 #sidebar.collapsed {
@@ -258,33 +259,33 @@ input, textarea { font-family: inherit; outline: none; }
 
 /* ── Progress Card ───────────────────────────────────── */
 .progress-card {
-  padding: 18px 14px;
+  padding: 16px 12px;
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 16px;
   margin-bottom: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 .progress-ring {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   position: relative;
 }
 .progress-ring svg {
-  width: 110px;
-  height: 110px;
+  width: 90px;
+  height: 90px;
   transform: rotate(-90deg);
 }
 .progress-ring-bg {
   fill: none;
   stroke: var(--bg4);
-  stroke-width: 4;
+  stroke-width: 5;
 }
 .progress-ring-fill {
   fill: none;
-  stroke: url(#progress-gradient);
-  stroke-width: 4;
+  stroke: #333333;
+  stroke-width: 5;
   stroke-linecap: round;
   transition: stroke-dasharray 0.5s ease;
 }
@@ -296,44 +297,57 @@ input, textarea { font-family: inherit; outline: none; }
   text-align: center;
 }
 .progress-percent {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--indigo), var(--emerald));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #333333;
+  letter-spacing: -0.5px;
 }
 .progress-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 8px;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 8px;
 }
 .progress-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   text-align: center;
-  padding: 10px 6px;
+  padding: 12px 8px;
   background: var(--bg3);
-  border-radius: 8px;
-  transition: background 0.15s;
+  border-radius: 10px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 72px;
 }
 .progress-stat:hover {
   background: var(--bg4);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
-.progress-stat:first-child { grid-column: span 2; }
 .stat-label {
   display: block;
   font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #999999;
   margin-bottom: 4px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.stat-value { display: block; font-size: 22px; font-weight: 700; font-family: var(--font-mono); }
-.stat-completed .stat-value { color: var(--emerald); }
-.stat-active .stat-value { color: var(--indigo); }
-.stat-overtime .stat-value { color: var(--amber); }
-.stat-abandoned .stat-value { color: var(--red); }
-.stat-total .stat-value { color: var(--text); }
-.stat-time .stat-value { color: var(--emerald); }
+.stat-value { 
+  display: block; 
+  font-size: 24px; 
+  font-weight: 600; 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.3px;
+  color: #1a1a1a;
+}
+.stat-overtime .stat-value { color: #FF6B35; }
+.stat-completed .stat-value,
+.stat-active .stat-value,
+.stat-abandoned .stat-value,
+.stat-total .stat-value,
+.stat-time .stat-value { color: #1a1a1a; }
 
 /* ── Main Content ───────────────────────────────────── */
 #content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -345,7 +359,15 @@ input, textarea { font-family: inherit; outline: none; }
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
 .date-display { flex: 1; }
-.date-display h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.date-display h1 { 
+  font-family: var(--font-display); 
+  font-size: 28px; 
+  font-weight: 800; 
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--text), var(--text2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 .date-display p { font-size: 13px; color: var(--text2); margin-top: 2px; }
 .date-nav-arrows { display: flex; gap: 6px; }
 .arrow-btn {
@@ -354,7 +376,16 @@ input, textarea { font-family: inherit; outline: none; }
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
-.arrow-btn:hover { background: var(--bg4); color: var(--text); border-color: var(--border2); }
+.arrow-btn:hover { 
+  background: var(--bg4); 
+  color: var(--text); 
+  border-color: var(--border2); 
+}
+.arrow-btn:hover#btn-clear-today { 
+  background: rgba(239,68,68,0.12); 
+  color: var(--red); 
+  border-color: rgba(239,68,68,0.3); 
+}
 .arrow-btn:focus-visible { box-shadow: var(--ring); }
 
 /* ── Task Input ─────────────────────────────────────── */
@@ -415,8 +446,12 @@ html[data-theme="dark"] .task-hint .pill {
   transition: background 0.15s; cursor: default;
   position: relative; group: true;
 }
-.task-row:hover { background: rgba(15,23,42,0.04); }
-html[data-theme="dark"] .task-row:hover { background: var(--bg2); }
+.task-row:hover { 
+  background: rgba(99,102,241,0.06); 
+}
+html[data-theme="dark"] .task-row:hover { 
+  background: rgba(99,102,241,0.08); 
+}
 .task-row.abandoned { opacity: 0.5; }
 .task-row.abandoned .task-label { text-decoration: line-through; color: var(--text3); }
 html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); }
@@ -439,15 +474,35 @@ html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); 
 .task-toggle.collapsed { opacity: 0.5; }
 
 .task-check {
-  width: 18px; height: 18px; flex-shrink: 0;
-  border: 2px solid var(--border2); border-radius: 5px;
-  cursor: pointer; transition: all 0.2s;
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2px solid var(--border2); border-radius: 6px;
+  cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex; align-items: center; justify-content: center;
+  background: var(--bg2);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
 }
-.task-check:hover { border-color: var(--indigo); }
-.task-check.checked { background: var(--emerald); border-color: var(--emerald); }
-.task-check.partial { background: rgba(99,102,241,0.2); border-color: var(--indigo); }
-.task-check .check-icon { display: none; color: #fff; font-size: 11px; font-weight: 700; }
+.task-check:hover { 
+  border-color: var(--indigo); 
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(99,102,241,0.2);
+}
+.task-check.checked { 
+  background: linear-gradient(135deg, var(--emerald), var(--emerald2)); 
+  border-color: var(--emerald); 
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+.task-check.partial { 
+  background: rgba(99,102,241,0.15); 
+  border-color: var(--indigo); 
+}
+.task-check .check-icon { 
+  display: none; 
+  color: #fff; 
+  font-size: 12px; 
+  font-weight: 700; 
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+}
 .task-check.checked .check-icon { display: block; }
 .task-check.partial .check-icon { display: block; opacity: 0.6; }
 
@@ -511,6 +566,25 @@ html[data-theme="dark"] .task-row.abandoned { background: rgba(239,68,68,0.05); 
 }
 .task-note-textarea:focus { border-color: var(--indigo); outline: none; box-shadow: var(--ring); }
 .task-note-hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+.overtime-tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-left: 8px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.overtime-tag.active {
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.overtime-tag.past {
+  background: rgba(99,102,241,0.1);
+  color: var(--indigo);
+  border: 1px solid rgba(99,102,241,0.2);
+}
 
 /* Children indent */
 .task-children {
@@ -1078,7 +1152,7 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
           <button class="arrow-btn" id="btn-prev-day">‹</button>
           <button class="arrow-btn" id="btn-today" title="回到今天">●</button>
           <button class="arrow-btn" id="btn-next-day">›</button>
-          <button class="arrow-btn" id="btn-clear-today" title="清空今日任务" style="color:var(--red);margin-left:8px">🗑</button>
+          <button class="arrow-btn" id="btn-clear-today" title="清空今日任务" style="color:var(--text3);margin-left:8px">🗑</button>
         </div>
       </div>
 
