@@ -577,6 +577,34 @@ const Tasks = {
     siblings.forEach((t, idx) => {
       t.order = idx + 1;
     });
+  },
+
+  async clearTodayTasks() {
+    const date = Utils.dateKey(State.currentDateOffset);
+    const userId = State.DB.currentUser;
+    let tasksToDelete = State.DB.tasks.filter(t => t.userId === userId && t.date === date);
+    tasksToDelete = tasksToDelete.filter(t => t.id);
+    if (tasksToDelete.length === 0) return;
+    
+    const count = tasksToDelete.length;
+    const confirmed = confirm(`确定要清空当天的 ${count} 个任务吗？此操作不可恢复！`);
+    if (!confirmed) return;
+    
+    const toDelete = [];
+    const collectTaskAndChildren = (taskId) => {
+      if (!taskId) return;
+      toDelete.push(taskId);
+      Tasks.childrenOf(taskId).forEach(c => collectTaskAndChildren(c.id));
+    };
+    tasksToDelete.forEach(t => collectTaskAndChildren(t.id));
+    
+    State.DB.tasks = State.DB.tasks.filter(t => !toDelete.includes(t.id));
+    if (State.timerState.taskId && toDelete.includes(State.timerState.taskId)) Timer.stop();
+    if (State.expandedNoteId && toDelete.includes(State.expandedNoteId)) State.expandedNoteId = null;
+    await Api.saveDB();
+    Sidebar.updateBadges();
+    Sidebar.updateProgress();
+    TaskRender.renderTaskList();
   }
 };
 
@@ -1597,6 +1625,7 @@ const Init = {
     document.getElementById('btn-future').onclick = () => DateView.setView('future');
     document.getElementById('btn-prev-day').onclick = () => DateView.offsetDate(-1);
     document.getElementById('btn-next-day').onclick = () => DateView.offsetDate(1);
+    document.getElementById('btn-clear-today').onclick = () => Tasks.clearTodayTasks();
   },
 
   bindSidebarEvents() {
