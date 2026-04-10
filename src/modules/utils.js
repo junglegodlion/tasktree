@@ -65,6 +65,12 @@ const Utils = {
 
   getAllTaskIds() {
     return State.DB.tasks.map(t => t.id);
+  },
+
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 };
 

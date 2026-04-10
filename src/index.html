@@ -179,7 +179,8 @@ input, textarea { font-family: inherit; outline: none; }
 #sidebar.collapsed .sidebar-divider,
 #sidebar.collapsed .user-info,
 #sidebar.collapsed .logo span,
-#sidebar.collapsed #admin-btn {
+#sidebar.collapsed #admin-btn,
+#sidebar.collapsed .historical-tasks-card {
   display: none;
 }
 #sidebar.collapsed .date-nav-btn {
@@ -976,6 +977,94 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
   background: rgba(245,158,11,0.15);
   border-left: 3px solid var(--amber);
 }
+
+/* ── Historical Incomplete Tasks ─────────────────────────── */
+.historical-tasks-card {
+  padding: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.historical-tasks-card .sidebar-label {
+  padding: 0 4px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.historical-tasks-card .sidebar-label .count-badge {
+  font-size: 11px;
+  background: var(--bg4);
+  padding: 2px 6px;
+  border-radius: 8px;
+  color: var(--text2);
+}
+.historical-task-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg3);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.historical-task-item:last-child {
+  margin-bottom: 0;
+}
+.historical-task-item .task-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.historical-task-item .task-actions-btns {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.historical-task-item .hist-action-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.historical-task-item .hist-action-btn:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+.historical-task-item .hist-action-btn.complete:hover {
+  background: rgba(16,185,129,0.15);
+  color: var(--emerald);
+  border-color: var(--emerald);
+}
+.historical-task-item .hist-action-btn.abandon:hover {
+  background: rgba(239,68,68,0.15);
+  color: var(--red);
+  border-color: var(--red);
+}
+.historical-task-item .hist-action-btn.continue:hover {
+  background: rgba(99,102,241,0.15);
+  color: var(--indigo);
+  border-color: var(--indigo);
+}
+.historical-empty {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: center;
+  padding: 12px 8px;
+}
 </style>
 </head>
 <body>
@@ -1116,6 +1205,15 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Historical Incomplete Tasks -->
+      <div class="sidebar-section" id="historical-tasks-section" style="display:none">
+        <div class="sidebar-label">
+          历史未完成
+          <span class="count-badge" id="historical-count">0</span>
+        </div>
+        <div class="historical-tasks-card" id="historical-tasks-list"></div>
       </div>
       
       <div class="sidebar-divider"></div>

@@ -133,6 +133,12 @@ const Utils = {
 
   getAllTaskIds() {
     return State.DB.tasks.map(t => t.id);
+  },
+
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 };
 
@@ -626,6 +632,77 @@ const Sidebar = {
     document.getElementById('badge-today').textContent  = todayC;
     document.getElementById('badge-future').textContent = future;
     Sidebar.updateProgress();
+    Sidebar.updateHistoricalTasks();
+  },
+
+  getHistoricalIncompleteTasks() {
+    const uid = State.DB.currentUser;
+    const today = Utils.todayKey();
+    return State.DB.tasks.filter(t => 
+      t.userId === uid && 
+      t.date < today && 
+      !t.done && 
+      !t.abandoned
+    );
+  },
+
+  updateHistoricalTasks() {
+    const section = document.getElementById('historical-tasks-section');
+    if (!section) return;
+    const listContainer = document.getElementById('historical-tasks-list');
+    const countBadge = document.getElementById('historical-count');
+    if (!listContainer || !countBadge) return;
+    
+    const tasks = Sidebar.getHistoricalIncompleteTasks();
+    
+    if (tasks.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    section.style.display = 'block';
+    countBadge.textContent = tasks.length;
+    
+    listContainer.innerHTML = tasks.map(t => `
+      <div class="historical-task-item" data-task-id="${t.id}">
+        <span class="task-text" title="${Utils.escapeHtml(t.text)}">${Utils.escapeHtml(t.text)}</span>
+        <div class="task-actions-btns">
+          <button class="hist-action-btn complete" title="标记完成" data-action="complete">✓</button>
+          <button class="hist-action-btn abandon" title="放弃任务" data-action="abandon">✕</button>
+          <button class="hist-action-btn continue" title="继续执行" data-action="continue">→</button>
+        </div>
+      </div>
+    `).join('');
+    
+    listContainer.querySelectorAll('.hist-action-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const taskId = btn.closest('.historical-task-item').dataset.taskId;
+        const action = btn.dataset.action;
+        await Sidebar.handleHistoricalAction(taskId, action);
+      };
+    });
+  },
+
+  async handleHistoricalAction(taskId, action) {
+    const task = State.DB.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const today = Utils.todayKey();
+    
+    if (action === 'complete') {
+      task.done = true;
+      await Tasks.propagateParentStatus(task.parentId);
+    } else if (action === 'abandon') {
+      task.abandoned = true;
+      task.abandonedAt = new Date().toISOString();
+    } else if (action === 'continue') {
+      task.date = today;
+    }
+    
+    await Api.saveDB();
+    Sidebar.updateBadges();
+    TaskRender.renderTaskList();
   },
 
   updateProgress() {
