@@ -980,63 +980,86 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
 
 /* ── Historical Incomplete Tasks ─────────────────────────── */
 .historical-tasks-card {
-  padding: 12px;
+  padding: 10px;
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 12px;
   margin-bottom: 8px;
-  max-height: 200px;
+  max-height: 280px;
   overflow-y: auto;
 }
-.historical-tasks-card .sidebar-label {
-  padding: 0 4px;
-  margin-bottom: 8px;
+.historical-tasks-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 2px;
 }
-.historical-tasks-card .sidebar-label .count-badge {
+.historical-tasks-header .sidebar-label {
+  padding: 0;
+  margin: 0;
+}
+.historical-tasks-header .count-badge {
   font-size: 11px;
-  background: var(--bg4);
-  padding: 2px 6px;
-  border-radius: 8px;
-  color: var(--text2);
+  background: rgba(99,102,241,0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: var(--indigo-d);
+  font-weight: 500;
 }
 .historical-task-item {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
   background: var(--bg3);
-  border-radius: 6px;
-  margin-bottom: 6px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
 }
 .historical-task-item:last-child {
   margin-bottom: 0;
 }
-.historical-task-item .task-text {
+.historical-task-item:hover {
+  background: var(--bg4);
+  border-color: var(--border);
+}
+.historical-task-item .task-text-wrap {
   flex: 1;
-  font-size: 12px;
+  min-width: 0;
+}
+.historical-task-item .task-text {
+  display: block;
+  font-size: 12.5px;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.historical-task-item .task-date {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
 }
 .historical-task-item .task-actions-btns {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   flex-shrink: 0;
 }
 .historical-task-item .hist-action-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  font-size: 11px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
   background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.historical-task-item .hist-action-btn:hover {
   border: 1px solid var(--border);
   color: var(--text2);
 }

@@ -663,9 +663,23 @@ const Sidebar = {
     section.style.display = 'block';
     countBadge.textContent = tasks.length;
     
+    const formatTaskDate = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const taskDate = new Date(dateStr + 'T00:00:00');
+      const diffDays = Math.floor((today - taskDate) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) return '昨天';
+      if (diffDays === 2) return '前天';
+      return `${d.getMonth()+1}月${d.getDate()}日`;
+    };
+    
     listContainer.innerHTML = tasks.map(t => `
       <div class="historical-task-item" data-task-id="${t.id}">
-        <span class="task-text" title="${Utils.escapeHtml(t.text)}">${Utils.escapeHtml(t.text)}</span>
+        <div class="task-text-wrap">
+          <span class="task-text">${Utils.escapeHtml(t.text)}</span>
+          <div class="task-date">${formatTaskDate(t.date)}</div>
+        </div>
         <div class="task-actions-btns">
           <button class="hist-action-btn complete" title="标记完成" data-action="complete">✓</button>
           <button class="hist-action-btn abandon" title="放弃任务" data-action="abandon">✕</button>
