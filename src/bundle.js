@@ -1292,11 +1292,27 @@ const Timer = {
 
     api.notify({ title: '⏰ 时间到！', body: `任务「${task?.text || ''}」计时结束` });
     api.flashFrame();
+    Timer.speakExpired();
     api.playSound('alarm');
     
     setTimeout(() => { api.focusWindow(); }, 500);
 
     Timer.updatePanel();
+  },
+
+  speakExpired() {
+    if (!window.speechSynthesis) return;
+    const text = '时间到了噢';
+    const speak = () => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN';
+      u.volume = 1;
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    };
+    speak();
+    setTimeout(speak, 1500);
+    setTimeout(speak, 3000);
   },
 
   stopTitleFlash() {
@@ -1314,6 +1330,7 @@ const Timer = {
     State.timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
     document.getElementById('timer-panel').classList.remove('visible');
     Modals.closeTimerExpired();
+    window.speechSynthesis?.cancel();
     const flash = document.getElementById('alert-flash');
     flash.classList.remove('active');
     Timer.stopTitleFlash();
@@ -1332,6 +1349,7 @@ const Timer = {
     State.timerState = { taskId: null, remaining: 0, timerSeconds: 0, running: false, interval: null, pausedAt: null, startTime: null };
     document.getElementById('timer-panel').classList.remove('visible');
     Modals.closeTimerExpired();
+    window.speechSynthesis?.cancel();
     const flash = document.getElementById('alert-flash');
     flash.classList.remove('active');
     Timer.stopTitleFlash();
