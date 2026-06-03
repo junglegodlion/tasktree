@@ -118,9 +118,25 @@ const Utils = {
   },
 
   toggleSidebar() {
-    State.sidebarCollapsed = !State.sidebarCollapsed;
     const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('collapsed', State.sidebarCollapsed);
+    const isCollapsing = !State.sidebarCollapsed;
+    
+    if (isCollapsing) {
+      sidebar.classList.add('collapsing');
+      sidebar.classList.remove('expanding');
+    }
+    
+    State.sidebarCollapsed = isCollapsing;
+    sidebar.classList.toggle('collapsed', isCollapsing);
+    
+    if (!isCollapsing) {
+      sidebar.classList.add('expanding');
+      sidebar.classList.remove('collapsing');
+      setTimeout(() => sidebar.classList.remove('expanding'), 300);
+    } else {
+      setTimeout(() => sidebar.classList.remove('collapsing'), 300);
+    }
+    
     try { localStorage.setItem('tasktree_sidebar', State.sidebarCollapsed ? 'collapsed' : 'expanded'); } catch {}
   },
 
