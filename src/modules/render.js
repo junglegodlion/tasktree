@@ -261,7 +261,7 @@ const TaskRender = {
         Tasks.cancelInlineChild();
         return;
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.isComposing) {
         e.preventDefault();
         if (input.dataset.inlineCommitted === '1') return;
         input.dataset.inlineCommitted = '1';
@@ -298,7 +298,7 @@ const TaskRender = {
       else TaskRender.renderTaskList();
     };
     labelEl.onblur = finish;
-    labelEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); labelEl.blur(); } };
+    labelEl.onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); labelEl.blur(); } };
   }
 };
 

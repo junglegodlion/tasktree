@@ -26,11 +26,11 @@ const Init = {
     document.getElementById('auth-toggle-link').onclick = () => Auth.toggleMode();
     document.getElementById('auth-submit').onclick = () => Auth.doAuth();
     ['auth-username','auth-password','auth-invite'].forEach(id => {
-      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') Auth.doAuth(); });
+      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) Auth.doAuth(); });
     });
 
     document.getElementById('new-task-input').addEventListener('keydown', async e => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.isComposing) {
         const text = e.target.value.trim();
         if (text) { await Tasks.addTask(text); e.target.value = ''; }
       }
