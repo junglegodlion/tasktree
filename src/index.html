@@ -1075,14 +1075,13 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
 
 /* ── Historical Incomplete Tasks ─────────────────────────── */
 .historical-tasks-card {
-  padding: 10px;
+  padding: 12px;
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   margin-bottom: 8px;
-  max-height: 280px;
+  max-height: 300px;
   overflow-y: auto;
-  box-shadow: var(--shadow-sm);
 }
 .historical-tasks-header {
   display: flex;
@@ -1096,23 +1095,26 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
   margin: 0;
 }
 .historical-tasks-header .count-badge {
-  font-size: 11px;
-  background: rgba(99,102,241,0.15);
-  padding: 2px 8px;
-  border-radius: 10px;
-  color: var(--indigo-d);
-  font-weight: 500;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(245,158,11,0.12);
+  padding: 2px 7px;
+  border-radius: 6px;
+  color: var(--amber);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(245,158,11,0.18);
 }
 .historical-task-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  padding: 10px;
+  padding: 8px 10px;
   background: var(--bg3);
   border-radius: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border: 1px solid transparent;
-  transition: all 0.15s;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .historical-task-item:last-child {
   margin-bottom: 0;
@@ -1121,62 +1123,90 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
   background: var(--bg4);
   border-color: var(--border);
 }
+.historical-task-item .hist-task-indicator {
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--amber);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.historical-task-item:hover .hist-task-indicator {
+  opacity: 1;
+}
 .historical-task-item .task-text-wrap {
   flex: 1;
   min-width: 0;
+  overflow: visible;
+  position: relative;
+}
+#hist-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 240px;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  word-break: break-word;
+  pointer-events: none;
+  animation: histTooltipIn 0.15s ease-out;
+}
+@keyframes histTooltipIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .historical-task-item .task-text {
   display: block;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.45;
   word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .historical-task-item .task-date {
+  display: block;
   font-size: 10px;
   color: var(--text3);
-  margin-top: 4px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.2px;
 }
 .historical-task-item .task-actions-btns {
-  display: flex;
-  gap: 4px;
+  display: none;
+  gap: 3px;
   flex-shrink: 0;
 }
+.historical-task-item:hover .task-actions-btns {
+  display: flex;
+}
 .historical-task-item .hist-action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text2);
-}
-.historical-task-item .hist-action-btn:hover {
-  border: 1px solid var(--border);
-  color: var(--text2);
-}
-.historical-task-item .hist-action-btn:hover {
-  background: var(--bg4);
-  color: var(--text);
+  color: var(--text3);
 }
 .historical-task-item .hist-action-btn.complete:hover {
   background: rgba(16,185,129,0.15);
   color: var(--emerald);
-  border-color: var(--emerald);
 }
 .historical-task-item .hist-action-btn.abandon:hover {
   background: rgba(239,68,68,0.15);
   color: var(--red);
-  border-color: var(--red);
 }
 .historical-task-item .hist-action-btn.continue:hover {
   background: rgba(99,102,241,0.15);
   color: var(--indigo);
-  border-color: var(--indigo);
 }
 .historical-empty {
   font-size: 11px;
@@ -1419,6 +1449,7 @@ html[data-theme="dark"] .task-row.drag-over { background: rgba(99,102,241,0.15);
 
 <!-- Alert Flash Overlay -->
 <div id="alert-flash"></div>
+<div id="hist-tooltip" style="display:none"></div>
 
 <!-- Admin Modal -->
 <div class="modal-overlay" id="admin-modal" style="display:none">
