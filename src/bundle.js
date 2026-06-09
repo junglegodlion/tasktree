@@ -1789,6 +1789,7 @@ const Init = {
     document.getElementById('btn-future').onclick = () => DateView.setView('future');
     document.getElementById('btn-prev-day').onclick = () => DateView.offsetDate(-1);
     document.getElementById('btn-next-day').onclick = () => DateView.offsetDate(1);
+    document.getElementById('btn-go-today').onclick = () => DateView.setView('today');
     document.getElementById('btn-clear-today').onclick = () => Tasks.clearTodayTasks();
   },
 
